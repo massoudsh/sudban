@@ -1,0 +1,170 @@
+// سودبان (Sudban) — schema دیتابیس اصلی
+// جزئیات مدل در docs/ARCHITECTURE.md بخش ۲ و ۳ توضیح داده شده است.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum PricingStrategy {
+  MATCH        // نزدیک به میانه بازار
+  PREMIUM      // بالاتر از میانه بازار
+  PENETRATION  // نزدیک به کف بازار
+}
+
+enum AlertType {
+  LOSS_MAKING
+  LOW_MARGIN
+  UNCOMPETITIVE_HIGH
+  PRICE_WAR_RISK
+}
+
+enum AlertSeverity {
+  CRITICAL
+  WARNING
+}
+
+model Seller {
+  id        String    @id @default(cuid())
+  name      String
+  email     String    @unique
+  createdAt DateTime  @default(now())
+
+  products  Product[]
+
+  @@map("sellers")
+}
+
+model Product {
+  id        String   @id @default(cuid())
+  sellerId  String
+  seller    Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  sku       String
+  name      String
+  category  String?
+  currentPrice Float?  // آخرین قیمت فروش فعلی (برای محاسبه سریع وضعیت)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  costProfiles     CostProfile[]
+  pricingRule      PricingRule?
+  competitorPrices CompetitorPrice[]
+  salesRecords     SalesRecord[]
+  suggestions      PriceSuggestion[]
+  alerts           Alert[]
+
+  @@unique([sellerId, sku])
+  @@index([sellerId])
+  @@map("products")
+}
+
+/// بهای تمام‌شده نسخه‌بندی‌شده؛ چون در اقتصاد ایران هزینه‌ها سریع تغییر می‌کند
+/// همیشه رکورد جدید اضافه می‌شود و isActive روی جدید‌ترین true است.
+model CostProfile {
+  id              String   @id @default(cuid())
+  productId       String
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  unitCost        Float    // بهای خرید/تولید هر واحد
+  packagingCost   Float    @default(0)
+  shippingCost    Float    @default(0)
+  otherFixedCost  Float    @default(0)   // سایر هزینه‌های ثابت به ازای واحد
+  commissionRate  Float    @default(0)   // نسبت از قیمت فروش (مثلاً کمیسیون مارکت‌پلیس) — بین ۰ و ۱
+  returnRate      Float    @default(0)   // نرخ مرجوعی — بین ۰ و ۱
+
+  isActive        Boolean  @default(true)
+  effectiveFrom   DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([productId, isActive])
+  @@map("cost_profiles")
+}
+
+model PricingRule {
+  id                String          @id @default(cuid())
+  productId         String          @unique
+  product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  minMarginPct      Float           // حداقل حاشیه سود قابل قبول (۰ تا ۱)
+  targetMarginPct   Float?          // حاشیه سود هدف (اختیاری)
+  floorPrice        Float?          // کف قیمت دستی (اگر تعیین شده، اولویت با سخت‌گیرانه‌تر است)
+  ceilingPrice      Float?          // سقف قیمت دستی
+  strategy          PricingStrategy @default(MATCH)
+  priceElasticity   Float?          // ضریب کشش قیمتی سفارشی (پیش‌فرض سیستمی اگر خالی باشد)
+
+  updatedAt         DateTime        @updatedAt
+  createdAt         DateTime        @default(now())
+
+  @@map("pricing_rules")
+}
+
+model CompetitorPrice {
+  id             String   @id @default(cuid())
+  productId      String
+  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  competitorName String
+  channel        String   // مثلاً: digikala, basalam, torob, website-x
+  price          Float
+  currency       String   @default("IRR")
+  capturedAt     DateTime @default(now())
+
+  @@index([productId, capturedAt])
+  @@map("competitor_prices")
+}
+
+model SalesRecord {
+  id         String   @id @default(cuid())
+  productId  String
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  price      Float    // قیمت فروش واقعی در این تراکنش/دوره
+  quantity   Int
+  channel    String?
+  soldAt     DateTime
+
+  createdAt  DateTime @default(now())
+
+  @@index([productId, soldAt])
+  @@map("sales_records")
+}
+
+model PriceSuggestion {
+  id                    String   @id @default(cuid())
+  productId             String
+  product               Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  suggestedPrice        Float
+  expectedMarginPct     Float
+  competitivenessScore  Float    // ۰ تا ۱۰۰: جایگاه نسبت به باند رقبا
+  strategy              PricingStrategy
+  rationale             Json     // آرایه رشته‌ای از دلایل تصمیم
+
+  createdAt             DateTime @default(now())
+
+  @@index([productId, createdAt])
+  @@map("price_suggestions")
+}
+
+model Alert {
+  id          String        @id @default(cuid())
+  productId   String
+  product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  type        AlertType
+  severity    AlertSeverity
+  message     String
+  context     Json?         // داده کمکی (مثلاً قیمت، حاشیه سود لحظه صدور)
+
+  resolvedAt  DateTime?
+  createdAt   DateTime      @default(now())
+
+  @@index([productId, resolvedAt])
+  @@map("alerts")
+}
