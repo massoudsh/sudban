@@ -1,0 +1,7 @@
+# Noqte Platform
+.vibe/
+.noqte/
+
+node_modules/
+dist/
+.env
