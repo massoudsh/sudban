@@ -8,8 +8,8 @@
 - `prisma/schema.prisma` — اسکیمای کامل دیتابیس
 - `docs/wiki/` — ویکی دانش زنده پروژه (entity/concept ها)؛ با رشد پروژه رشد می‌کند — قوانین در `AGENTS.md`
 - `docs/MARKET_RESEARCH.md` — رقبای بین‌المللی مشابه و جایگاه تمایز سودبان
-- `docs/ISSUES.md` — بک‌لاگ آماده برای ساخت issue در گیت‌هاب (نزدیک‌مدت + نقشه راه آینده)
-- `docs/gh-wiki/` — نسخه mirror ویکی برای GitHub Wiki native (`sudban.wiki.git`)؛ منبع حقیقت همچنان `docs/wiki/` است
+- `docs/ISSUES.md` — بک‌لاگ Issueها؛ همه ۱۳ مورد روی گیت‌هاب هم ساخته شده‌اند (Issue #1 تا #13)
+- `docs/gh-wiki/` — نسخه mirror ویکی برای GitHub Wiki native؛ روی [sudban wiki](https://github.com/massoudsh/sudban/wiki) هم push شده؛ منبع حقیقت همچنان `docs/wiki/` است
 
 ## اجرا (روی سرور، نه داخل این کانتینر)
 
