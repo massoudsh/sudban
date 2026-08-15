@@ -54,6 +54,29 @@ export interface RiskAlertCandidate {
   context: Record<string, number>;
 }
 
+export interface SalesTrend {
+  direction: "UP" | "DOWN" | "STABLE" | "UNKNOWN";
+  recentAvgQuantity: number | null;
+  previousAvgQuantity: number | null;
+  changePct: number | null; // نسبت تغییر میانگین فروش دوره اخیر نسبت به دوره قبل
+}
+
+export type WisdomPriority = "HIGH" | "MEDIUM" | "LOW";
+export type WisdomCategory = "RISK" | "MARGIN" | "COMPETITIVE" | "TREND" | "OPPORTUNITY";
+
+export interface WisdomInsight {
+  priority: WisdomPriority;
+  category: WisdomCategory;
+  title: string;
+  message: string;
+  recommendation: string;
+}
+
+export interface WisdomReport {
+  insights: WisdomInsight[];
+  topRecommendation: string;
+}
+
 // ضرایب پیش‌فرض سیستمی — قابل بازنویسی به ازای هر محصول از طریق PricingRule
 export const DEFAULTS = {
   PRICE_ELASTICITY: -1.5, // درصد تغییر تقاضا به ازای هر ۱٪ تغییر قیمت (کالای معمولی، نه لوکس/ضروری محض)

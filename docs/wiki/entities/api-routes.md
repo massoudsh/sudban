@@ -11,10 +11,11 @@
 | `pricingRulesRouter` | `/products/:id/pricing-rule` | تعیین/دریافت `PricingRule` |
 | `competitorsRouter` | `/products/:id/competitor-prices` | ثبت/دریافت `CompetitorPrice` |
 | `salesRouter` | `/products/:id/sales` | ثبت/دریافت `SalesRecord` |
-| `pricingRouter` | `/products/:id/margin`, `/suggestion`, `/simulate`, `/alerts` | صدا زدن موتورهای قیمت‌گذاری |
+| `pricingRouter` | `/products/:id/margin`, `/suggestion`, `/simulate`, `/alerts`, `/wisdom` | صدا زدن موتورهای قیمت‌گذاری |
 
 ## وابستگی‌ها
 - [[entities/pricing-engines]] — `pricingRouter` مستقیماً این موتورها را فراخوانی می‌کند
+- [[concepts/wisdom-engine]] — منطق endpoint `GET /:id/wisdom`
 - [[entities/data-model]] — همه روترها روی مدل‌های Prisma عمل می‌کنند
 - `src/lib/productContext.ts` — helper مشترک برای بارگذاری محصول + آخرین CostProfile فعال + PricingRule
 
@@ -22,6 +23,8 @@
 - خطاهای مدیریت‌نشده در هندلر مرکزی `server.ts:26` گرفته می‌شوند و پیام فارسی عمومی برمی‌گردانند.
 - چهار روتر (`costs`, `pricingRules`, `competitors`, `sales`, `pricing`) همگی زیر `/products` mount
   شده‌اند و مسیر داخلی خودشان را با `/:id/...` تعریف می‌کنند (`server.ts:19-23`).
+
+- `GET /:id/wisdom` نتیجه را persist نمی‌کند و `checkRisks`/`suggestPrice` را مستقیم (بدون DB side-effect) فراخوانی می‌کند.
 
 ## منابع کد
 - `src/server.ts:16-23` — نقطه mount همه روترها

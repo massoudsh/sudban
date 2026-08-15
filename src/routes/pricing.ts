@@ -5,6 +5,8 @@ import { calculateMargin } from "../services/marginCalculator";
 import { suggestPrice } from "../services/priceSuggestionEngine";
 import { simulateScenario } from "../services/scenarioSimulator";
 import { checkRisks } from "../services/riskAlertEngine";
+import { computeSalesTrend } from "../services/salesTrend";
+import { generateWisdom } from "../services/wisdomEngine";
 import { Strategy } from "../types";
 
 export const pricingRouter = Router();
@@ -159,6 +161,55 @@ pricingRouter.get("/:id/alerts", async (req, res) => {
     });
 
     res.json(activeAlerts);
+  } catch (err) {
+    if (!handleContextError(err, res)) throw err;
+  }
+});
+
+// GET /products/:id/wisdom?strategy=MATCH — بینش‌های ترکیبی و توصیه اولویت‌بندی‌شده (موتور خرد)
+pricingRouter.get("/:id/wisdom", async (req, res) => {
+  try {
+    const { product, costs, pricingRule, competitivePosition } = await loadProductPricingContext(
+      req.params.id
+    );
+
+    if (!product.currentPrice) {
+      return res.status(400).json({ error: "currentPrice برای این محصول ثبت نشده؛ ابتدا آن را تنظیم کنید" });
+    }
+
+    const strategyParam = (req.query.strategy as string) || undefined;
+    const strategy: Strategy = (strategyParam as Strategy) || pricingRule.strategy;
+
+    const suggestion = suggestPrice({
+      costs,
+      minMarginPct: pricingRule.minMarginPct,
+      floorPrice: pricingRule.floorPrice,
+      ceilingPrice: pricingRule.ceilingPrice,
+      strategy,
+      competitivePosition,
+    });
+
+    const risks = checkRisks({
+      price: product.currentPrice,
+      costs,
+      minMarginPct: pricingRule.minMarginPct,
+      competitivePosition,
+    });
+
+    const salesRecords = await prisma.salesRecord.findMany({ where: { productId: req.params.id } });
+    const salesTrend = computeSalesTrend(salesRecords);
+
+    const report = generateWisdom({
+      currentPrice: product.currentPrice,
+      costs,
+      minMarginPct: pricingRule.minMarginPct,
+      competitivePosition,
+      suggestion,
+      risks,
+      salesTrend,
+    });
+
+    res.json(report);
   } catch (err) {
     if (!handleContextError(err, res)) throw err;
   }

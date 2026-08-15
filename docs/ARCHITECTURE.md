@@ -19,6 +19,11 @@
       └─────────────┴──────┬───────┴───────────────┴───────────────┘
                             │
                     ┌───────▼────────┐
+                    │  Wisdom Engine  │  ← لایه ترکیبی؛ خروجی پنج سرویس بالا + روند فروش را
+                    │  (موتور خرد)    │    می‌گیرد و بینش اولویت‌بندی‌شده تولید می‌کند
+                    └───────┬────────┘
+                            │
+                    ┌───────▼────────┐
                     │  Prisma ORM     │
                     │  (PostgreSQL)   │
                     └────────────────┘
@@ -77,6 +82,17 @@ marginPct = profit / price
 - `UNCOMPETITIVE_HIGH` (هشدار): `price` بیش از آستانه٪ بالاتر از `max` رقبا
 - `PRICE_WAR_RISK` (هشدار): `price` بیش از آستانه٪ پایین‌تر از `min` رقبا **و** `marginPct` نزدیک کف مجاز
 
+### ۲.۶ Wisdom Engine (موتور خرد)
+ورودی: `productId`, `strategy؟` (اختیاری، وگرنه از `PricingRule.strategy`)
+خروجی: `insights[]` (اولویت‌بندی‌شده HIGH/MEDIUM/LOW با دسته RISK/MARGIN/COMPETITIVE/TREND/OPPORTUNITY) + `topRecommendation`
+
+لایه ترکیبی (synthesis) است، نه یک محاسبه مستقل جدید؛ خروجی Margin Calculator، Price Suggestion
+Engine، Risk Alert Engine و Competitive Position را با یک سیگنال تازه — **روند فروش** (میانگین
+دو نیمه اخیر/قبلی تاریخچه `SalesRecord`) — ترکیب می‌کند تا به‌جای چند عدد پراکنده، یک لیست
+بینش قابل‌اقدام و یک توصیه محوری واحد به فروشنده بدهد. منطق کامل و جدول قوانین هر بینش در
+`docs/wiki/concepts/wisdom-engine.md` مستند است. بر خلاف `/suggestion`، نتیجه در دیتابیس
+persist نمی‌شود (صرفاً محاسبه لحظه‌ای، مثل `/margin`).
+
 ## ۳. جریان داده اصلی (Core Flow)
 
 ```
@@ -89,6 +105,8 @@ marginPct = profit / price
 6. فروشنده می‌تواند سناریوهای دلخواه را با Scenario Simulator بررسی کند
 7. Risk Alert Engine به‌صورت مداوم (روی هر ورودی قیمت رقیب/فروش/قیمت واقعی)
    بررسی می‌کند و Alert می‌سازد
+8. فروشنده در هر لحظه می‌تواند Wisdom Engine را فراخوانی کند تا به‌جای بررسی جداگانه چهار
+   endpoint بالا، یک خلاصه اولویت‌بندی‌شده و توصیه محوری بگیرد
 ```
 
 ## ۴. پشته فناوری MVP

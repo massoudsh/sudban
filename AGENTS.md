@@ -81,3 +81,16 @@ docs/wiki/
 4. صفحات کهنه (کد مرتبط تغییر کرده ولی صفحه آپدیت نشده) — بازخوانی و sync.
 
 جزئیات کامل قوانین در `docs/wiki/schema.md`.
+
+## Mirror روی GitHub Wiki (`docs/gh-wiki/`)
+علاوه بر `docs/wiki/` (منبع حقیقت)، یک نسخه mirror برای GitHub Wiki native در `docs/gh-wiki/`
+نگه‌داری می‌شود (چون GitHub Wiki یک ریپوی git جدا با namespace تخت است: `sudban.wiki.git`).
+
+- بعد از هر آپدیت در `docs/wiki/entities/*` یا `docs/wiki/concepts/*`، صفحه‌ی متناظر در
+  `docs/gh-wiki/` را هم به‌روز کن (نام‌گذاری GH: `Title-Case-With-Hyphens.md`، لینک‌ها
+  `[[Display Name|Page-Name]]`).
+- `docs/gh-wiki/Home.md` معادل `overview.md` + `index.md` است؛ `docs/gh-wiki/_Sidebar.md` ناوبری
+  کناری را نگه می‌دارد.
+- برای انتشار واقعی روی گیت‌هاب: یک‌بار Wiki ریپو را در تنظیمات ریپو فعال کن (Settings → Features →
+  Wikis)، سپس `git clone https://github.com/massoudsh/sudban.wiki.git`، محتوای `docs/gh-wiki/*` را
+  در آن کپی و push کن (نیازمند توکن با دسترسی نوشتن؛ جزئیات احراز هویت در تاریخچه پروژه).

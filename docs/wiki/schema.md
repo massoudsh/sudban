@@ -27,9 +27,10 @@
 
 ## فهرست فعلی entity/concept
 - `entities/data-model.md` — همه‌ی مدل‌های Prisma (Seller, Product, CostProfile, PricingRule, ...)
-- `entities/pricing-engines.md` — پنج موتور منطق قیمت‌گذاری (`src/services/*`)
+- `entities/pricing-engines.md` — شش موتور منطق قیمت‌گذاری + Sales Trend (`src/services/*`)
 - `entities/api-routes.md` — همه‌ی route های Express (`src/routes/*`, `src/server.ts`)
 - `concepts/pricing-strategy.md` — منطق استراتژی قیمت‌گذاری و مدل کشش قیمتی
+- `concepts/wisdom-engine.md` — منطق ترکیب بینش‌ها در Wisdom Engine
 
 ## Lint دوره‌ای
 وقتی کاربر گفت «ویکی رو بازبینی کن»: orphan pages، broken link، تناقض بین صفحات، صفحات کهنه —

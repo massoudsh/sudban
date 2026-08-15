@@ -7,6 +7,9 @@
 - `docs/ARCHITECTURE.md` — معماری فنی سرویس‌ها و جریان داده
 - `prisma/schema.prisma` — اسکیمای کامل دیتابیس
 - `docs/wiki/` — ویکی دانش زنده پروژه (entity/concept ها)؛ با رشد پروژه رشد می‌کند — قوانین در `AGENTS.md`
+- `docs/MARKET_RESEARCH.md` — رقبای بین‌المللی مشابه و جایگاه تمایز سودبان
+- `docs/ISSUES.md` — بک‌لاگ آماده برای ساخت issue در گیت‌هاب (نزدیک‌مدت + نقشه راه آینده)
+- `docs/gh-wiki/` — نسخه mirror ویکی برای GitHub Wiki native (`sudban.wiki.git`)؛ منبع حقیقت همچنان `docs/wiki/` است
 
 ## اجرا (روی سرور، نه داخل این کانتینر)
 
@@ -35,6 +38,7 @@ npm run build && npm start
 | GET | `/products/:id/suggestion?strategy=MATCH` | قیمت پیشنهادی موتور |
 | POST | `/products/:id/simulate` | شبیه‌سازی سناریوی تغییر قیمت |
 | GET | `/products/:id/alerts` | هشدارهای فعال ریسک قیمت |
+| GET | `/products/:id/wisdom?strategy=MATCH` | بینش‌های ترکیبی اولویت‌بندی‌شده + یک توصیه محوری (موتور خرد) |
 
 ## نمونه جریان کامل
 
@@ -63,4 +67,7 @@ curl localhost:3000/products/$PRODUCT_ID/suggestion
 
 # ۶) بررسی هشدارهای ریسک روی قیمت فعلی
 curl localhost:3000/products/$PRODUCT_ID/alerts
+
+# ۷) گرفتن توصیه ترکیبی و اولویت‌بندی‌شده (موتور خرد)
+curl localhost:3000/products/$PRODUCT_ID/wisdom
 ```
