@@ -34,6 +34,18 @@ model Seller {
   email     String    @unique
   createdAt DateTime  @default(now())
 
+  /// پیشوند غیرمحرمانه کلید API (برای جست‌وجوی سریع)؛ خود کلید فقط یک‌بار در پاسخ ساخت نمایش داده می‌شود.
+  apiKeyPrefix String  @unique
+  /// هش bcrypt کلید API کامل — هرگز خود کلید ذخیره نمی‌شود.
+  apiKeyHash   String
+
+  /// شناسه چت تلگرام برای دریافت هشدارها (اختیاری)
+  telegramChatId String?
+  /// ایمیل دریافت هشدار در صورت متفاوت بودن از email اصلی (اختیاری)
+  notifyEmail    String?
+  /// شماره موبایل برای پیامک هشدار (اختیاری)
+  notifyPhone    String?
+
   products  Product[]
 
   @@map("sellers")

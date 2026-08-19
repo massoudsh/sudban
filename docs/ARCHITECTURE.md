@@ -116,9 +116,51 @@ persist نمی‌شود (صرفاً محاسبه لحظه‌ای، مثل `/marg
 | زبان/ران‌تایم | Node.js + TypeScript | type-safety برای منطق مالی حساس |
 | وب فریم‌ورک | Express | ساده، بدون overhead غیرضروری برای MVP |
 | ORM / دیتابیس | Prisma + PostgreSQL | schema اعلانی، migration امن، مناسب داده رابطه‌ای مالی |
-| اعتبارسنجی ورودی | بررسی دستی سبک در لایه route | حجم فعلی endpointها اعتبارسنجی سبک را توجیه می‌کند |
+| اعتبارسنجی ورودی | zod schema-based (`src/lib/schemas.ts` + `src/lib/validate.ts`) | یکدست، پیام خطای ساختاریافته، به‌جای بررسی پراکنده در هر route |
+| تست | Vitest | تست واحد سریع بدون نیاز به ts-jest/babel جدا |
 
-## ۵. نکات مقیاس‌پذیری (برای نسخه‌های بعدی، نه MVP)
+## ۵. احراز هویت، مجوز و محافظت API (Auth & Security)
+
+- **احراز هویت**: کلید API به ازای هر Seller. در پاسخ `POST /sellers` یک‌بار نمایش داده می‌شود
+  (`sk_live_...`)؛ در دیتابیس فقط `apiKeyPrefix` (غیرمحرمانه، برای جست‌وجو) و `apiKeyHash`
+  (bcrypt) ذخیره می‌شود — خود کلید هرگز persist نمی‌شود. کلاینت باید هدر
+  `Authorization: Bearer <apiKey>` یا `x-api-key: <apiKey>` بفرستد (`src/lib/apiKey.ts`, `src/lib/auth.ts`).
+- **مجوز سطح فروشنده**: میان‌افزار `requireOwnedProduct` تضمین می‌کند هر `productId` در مسیر
+  متعلق به `req.seller` احرازشده باشد؛ در غیر این صورت ۴۰۴ برمی‌گردد (نه ۴۰۳، برای جلوگیری از
+  enumeration). `POST /products` مقدار `sellerId` را همیشه از هویت احرازشده می‌گیرد، نه از body.
+- **Rate limiting**: `express-rate-limit` سراسری (پیش‌فرض ۳۰۰ درخواست/۱۵ دقیقه، با
+  `RATE_LIMIT_MAX` قابل تنظیم).
+- **هدرهای امنیتی + CORS**: `helmet()` فعال است؛ CORS فقط برای origin های داخل `CORS_ORIGINS`
+  (لیست جدا با کاما در env) مجاز است؛ بدون تنظیم، فقط دسترسی سرور-به-سرور (بدون origin مرورگر) کار می‌کند.
+- **محدودیت اندازه بدنه**: `express.json({ limit: "1mb" })` برای جلوگیری از payload های حجیم.
+
+## ۶. Import دسته‌ای (Bulk Import)
+
+`POST /products/bulk-import?type=cost-profiles|sales|competitor-prices` — دو نوع بدنه پشتیبانی می‌شود:
+- `Content-Type: application/json` با `{ rows: [...] }`
+- `Content-Type: text/csv` با متن خام CSV (سطر اول = نام ستون‌ها)
+
+هر ردیف باید `productId` یا `sku` داشته باشد (برای map شدن به محصول متعلق به فروشنده احرازشده).
+پاسخ شامل `successCount`, `errorCount` و `errors[]` (شماره ردیف + پیام خطا) است تا ردیف‌های
+معتبر با وجود چند ردیف خطادار همچنان import شوند. حداکثر ۵۰۰۰ ردیف در هر درخواست.
+
+## ۷. کانال هشدار خارج از API (Notifications)
+
+`src/services/notifier.ts` یک registry از کانال‌های pluggable است (تلگرام/ایمیل/پیامک). هر
+کانال مستقل پیکربندی می‌شود و خطای یک کانال باعث توقف بقیه یا بلاک‌شدن پاسخ API نمی‌شود
+(best-effort، fire-and-forget از `GET /products/:id/alerts`).
+
+| کانال | نیازمند env سراسری | نیازمند تنظیم فروشنده |
+|---|---|---|
+| تلگرام (اولویت اول برای بازار ایران) | `TELEGRAM_BOT_TOKEN` | `telegramChatId` (از `PATCH /sellers/me/notifications`) |
+| ایمیل (fallback) | `EMAIL_WEBHOOK_URL`, `EMAIL_WEBHOOK_TOKEN؟` | `notifyEmail` (یا همان `email` ثبت‌نامی) |
+| پیامک (fallback) | `SMS_WEBHOOK_URL`, `SMS_WEBHOOK_TOKEN؟` | `notifyPhone` |
+
+کانال‌های ایمیل/پیامک به‌صورت آداپتور webhook عمومی (`POST { to, text }`) پیاده شده‌اند تا با هر
+سرویس‌دهنده‌ای (مثلاً یک پروکسی نازک روی Kavenegar/Melipayamak یا هر ارائه‌دهنده ایمیل ترنزکشنال)
+قابل اتصال باشند، بدون قفل‌شدن روی یک vendor خاص.
+
+## ۸. نکات مقیاس‌پذیری (برای نسخه‌های بعدی، نه MVP فعلی)
 
 - رصد قیمت رقبا با حجم بالا → صف پیام (queue) + workerهای جداگانه per-channel
 - موتور پیشنهاد قیمت مبتنی بر ML → سرویس جدا با feature store روی `SalesRecord` + `CompetitorPrice` تاریخی

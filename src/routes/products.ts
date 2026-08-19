@@ -1,45 +1,54 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
+import { requireAuth, requireOwnedProduct } from "../lib/auth";
+import { validate } from "../lib/validate";
+import { createProductSchema, updateProductSchema } from "../lib/schemas";
 
 export const productsRouter = Router();
 
-// POST /products — ساخت محصول جدید
-productsRouter.post("/", async (req, res) => {
-  const { sellerId, sku, name, category, currentPrice } = req.body ?? {};
+productsRouter.use(requireAuth);
 
-  if (!sellerId || !sku || !name) {
-    return res.status(400).json({ error: "sellerId، sku و name الزامی هستند" });
+// POST /products — ساخت محصول جدید (sellerId از فروشنده احرازشده گرفته می‌شود، نه از body)
+productsRouter.post("/", validate(createProductSchema), async (req, res) => {
+  const { sku, name, category, currentPrice } = req.body;
+
+  try {
+    const product = await prisma.product.create({
+      data: {
+        sellerId: req.seller!.id,
+        sku,
+        name,
+        category: category ?? null,
+        currentPrice: currentPrice ?? null,
+      },
+    });
+    res.status(201).json(product);
+  } catch (err: unknown) {
+    if (typeof err === "object" && err !== null && "code" in err && (err as { code: string }).code === "P2002") {
+      res.status(409).json({ error: "محصولی با این sku برای این فروشنده از قبل ثبت شده است" });
+      return;
+    }
+    throw err;
   }
-
-  const product = await prisma.product.create({
-    data: { sellerId, sku, name, category: category ?? null, currentPrice: currentPrice ?? null },
-  });
-
-  res.status(201).json(product);
 });
 
 // GET /products/:id
-productsRouter.get("/:id", async (req, res) => {
+productsRouter.get("/:id", requireOwnedProduct, async (req, res) => {
   const product = await prisma.product.findUnique({ where: { id: req.params.id } });
-  if (!product) return res.status(404).json({ error: "محصول یافت نشد" });
   res.json(product);
 });
 
 // PATCH /products/:id — عمدتاً برای به‌روزرسانی currentPrice
-productsRouter.patch("/:id", async (req, res) => {
-  const { currentPrice, name, category } = req.body ?? {};
+productsRouter.patch("/:id", requireOwnedProduct, validate(updateProductSchema), async (req, res) => {
+  const { currentPrice, name, category } = req.body;
 
-  try {
-    const product = await prisma.product.update({
-      where: { id: req.params.id },
-      data: {
-        ...(currentPrice != null ? { currentPrice } : {}),
-        ...(name != null ? { name } : {}),
-        ...(category != null ? { category } : {}),
-      },
-    });
-    res.json(product);
-  } catch {
-    res.status(404).json({ error: "محصول یافت نشد" });
-  }
+  const product = await prisma.product.update({
+    where: { id: req.params.id },
+    data: {
+      ...(currentPrice !== undefined ? { currentPrice } : {}),
+      ...(name !== undefined ? { name } : {}),
+      ...(category !== undefined ? { category } : {}),
+    },
+  });
+  res.json(product);
 });

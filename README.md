@@ -15,59 +15,76 @@
 
 ```bash
 npm install
-cp .env.example .env   # و DATABASE_URL را تنظیم کن
+cp .env.example .env   # و DATABASE_URL را تنظیم کن (کانال‌های هشدار/CORS/rate-limit اختیاری‌اند)
 npx prisma migrate dev --name init
 npm run dev             # اجرای dev با هات‌ریلود
+npm test                 # اجرای تست‌های واحد موتورهای قیمت‌گذاری (Vitest)
 # یا برای production:
 npm run build && npm start
 ```
 
+## احراز هویت
+
+همه endpoint های زیر `/products` و `/sellers/me*` نیازمند کلید API هستند. کلید فقط یک‌بار در
+پاسخ `POST /sellers` نمایش داده می‌شود؛ آن را در هدر بفرستید:
+
+```
+Authorization: Bearer sk_live_...
+```
+(یا معادل آن: هدر `x-api-key`)
+
 ## نقشه API
 
-| متد | مسیر | شرح |
-|---|---|---|
-| POST | `/sellers` | ساخت فروشنده |
-| GET | `/sellers/:id/products` | لیست محصولات فروشنده |
-| POST | `/products` | ساخت محصول |
-| GET/PATCH | `/products/:id` | دریافت/به‌روزرسانی محصول |
-| POST/GET | `/products/:id/costs` | ثبت/تاریخچه بهای تمام‌شده |
-| PUT/GET | `/products/:id/pricing-rule` | تعیین/دریافت قاعده قیمت‌گذاری |
-| POST/GET | `/products/:id/competitor-prices` | ثبت/دریافت قیمت رقبا |
-| POST/GET | `/products/:id/sales` | ثبت/دریافت تاریخچه فروش |
-| GET | `/products/:id/margin?price=X` | محاسبه حاشیه سود برای قیمت فرضی |
-| GET | `/products/:id/suggestion?strategy=MATCH` | قیمت پیشنهادی موتور |
-| POST | `/products/:id/simulate` | شبیه‌سازی سناریوی تغییر قیمت |
-| GET | `/products/:id/alerts` | هشدارهای فعال ریسک قیمت |
-| GET | `/products/:id/wisdom?strategy=MATCH` | بینش‌های ترکیبی اولویت‌بندی‌شده + یک توصیه محوری (موتور خرد) |
+| متد | مسیر | احراز هویت | شرح |
+|---|---|---|---|
+| POST | `/sellers` | خیر | ساخت فروشنده + صدور کلید API |
+| GET | `/sellers/me` | بله | اطلاعات فروشنده احرازشده |
+| PATCH | `/sellers/me/notifications` | بله | تنظیم کانال هشدار (تلگرام/ایمیل/پیامک) |
+| GET | `/sellers/:id/products` | بله | لیست محصولات فروشنده |
+| POST | `/products` | بله | ساخت محصول |
+| GET/PATCH | `/products/:id` | بله | دریافت/به‌روزرسانی محصول |
+| POST/GET | `/products/:id/costs` | بله | ثبت/تاریخچه بهای تمام‌شده |
+| PUT/GET | `/products/:id/pricing-rule` | بله | تعیین/دریافت قاعده قیمت‌گذاری |
+| POST/GET | `/products/:id/competitor-prices` | بله | ثبت/دریافت قیمت رقبا |
+| POST/GET | `/products/:id/sales` | بله | ثبت/دریافت تاریخچه فروش |
+| POST | `/products/bulk-import?type=cost-profiles\|sales\|competitor-prices` | بله | import دسته‌ای CSV/JSON |
+| GET | `/products/:id/margin?price=X` | بله | محاسبه حاشیه سود برای قیمت فرضی |
+| GET | `/products/:id/suggestion?strategy=MATCH` | بله | قیمت پیشنهادی موتور |
+| POST | `/products/:id/simulate` | بله | شبیه‌سازی سناریوی تغییر قیمت |
+| GET | `/products/:id/alerts` | بله | هشدارهای فعال ریسک قیمت (+ اطلاع‌رسانی هشدار تازه) |
+| GET | `/products/:id/wisdom?strategy=MATCH` | بله | بینش‌های ترکیبی اولویت‌بندی‌شده + یک توصیه محوری (موتور خرد) |
 
 ## نمونه جریان کامل
 
 ```bash
-# ۱) ساخت فروشنده و محصول
-SELLER_ID=$(curl -s -X POST localhost:3000/sellers -H 'Content-Type: application/json' \
-  -d '{"name":"فروشگاه نمونه","email":"shop@example.com"}' | jq -r .id)
+# ۱) ساخت فروشنده — کلید API را ذخیره کن (فقط همین یک‌بار نمایش داده می‌شود)
+RESP=$(curl -s -X POST localhost:3000/sellers -H 'Content-Type: application/json' \
+  -d '{"name":"فروشگاه نمونه","email":"shop@example.com"}')
+API_KEY=$(echo "$RESP" | jq -r .apiKey)
+AUTH="Authorization: Bearer $API_KEY"
 
-PRODUCT_ID=$(curl -s -X POST localhost:3000/products -H 'Content-Type: application/json' \
-  -d "{\"sellerId\":\"$SELLER_ID\",\"sku\":\"SKU-1\",\"name\":\"محصول تستی\",\"currentPrice\":250000}" | jq -r .id)
+# ۲) ساخت محصول (sellerId خودکار از کلید API گرفته می‌شود)
+PRODUCT_ID=$(curl -s -X POST localhost:3000/products -H 'Content-Type: application/json' -H "$AUTH" \
+  -d '{"sku":"SKU-1","name":"محصول تستی","currentPrice":250000}' | jq -r .id)
 
-# ۲) ثبت بهای تمام‌شده
-curl -X POST localhost:3000/products/$PRODUCT_ID/costs -H 'Content-Type: application/json' \
+# ۳) ثبت بهای تمام‌شده
+curl -X POST localhost:3000/products/$PRODUCT_ID/costs -H 'Content-Type: application/json' -H "$AUTH" \
   -d '{"unitCost":150000,"packagingCost":5000,"shippingCost":15000,"commissionRate":0.08,"returnRate":0.03}'
 
-# ۳) تعیین قاعده قیمت‌گذاری
-curl -X PUT localhost:3000/products/$PRODUCT_ID/pricing-rule -H 'Content-Type: application/json' \
+# ۴) تعیین قاعده قیمت‌گذاری
+curl -X PUT localhost:3000/products/$PRODUCT_ID/pricing-rule -H 'Content-Type: application/json' -H "$AUTH" \
   -d '{"minMarginPct":0.15,"strategy":"MATCH"}'
 
-# ۴) ثبت قیمت رقبا
-curl -X POST localhost:3000/products/$PRODUCT_ID/competitor-prices -H 'Content-Type: application/json' \
+# ۵) ثبت قیمت رقبا
+curl -X POST localhost:3000/products/$PRODUCT_ID/competitor-prices -H 'Content-Type: application/json' -H "$AUTH" \
   -d '{"competitorName":"رقیب الف","channel":"digikala","price":260000}'
 
-# ۵) دریافت پیشنهاد قیمت
-curl localhost:3000/products/$PRODUCT_ID/suggestion
+# ۶) دریافت پیشنهاد قیمت
+curl localhost:3000/products/$PRODUCT_ID/suggestion -H "$AUTH"
 
-# ۶) بررسی هشدارهای ریسک روی قیمت فعلی
-curl localhost:3000/products/$PRODUCT_ID/alerts
+# ۷) بررسی هشدارهای ریسک روی قیمت فعلی
+curl localhost:3000/products/$PRODUCT_ID/alerts -H "$AUTH"
 
-# ۷) گرفتن توصیه ترکیبی و اولویت‌بندی‌شده (موتور خرد)
-curl localhost:3000/products/$PRODUCT_ID/wisdom
+# ۸) گرفتن توصیه ترکیبی و اولویت‌بندی‌شده (موتور خرد)
+curl localhost:3000/products/$PRODUCT_ID/wisdom -H "$AUTH"
 ```
