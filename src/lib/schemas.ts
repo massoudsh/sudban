@@ -77,8 +77,15 @@ export const strategyQuerySchema = z.object({
 
 // ---- Bulk import (#4) ----
 
-const IMPORT_TYPES = ["cost-profiles", "sales", "competitor-prices"] as const;
+export const IMPORT_TYPES = ["cost-profiles", "sales", "competitor-prices"] as const;
 export type ImportType = (typeof IMPORT_TYPES)[number];
+
+// query param نوع import — قبلاً دستی در route چک می‌شد (#2)
+export const bulkImportQuerySchema = z.object({
+  type: z.enum(IMPORT_TYPES, {
+    message: `query param type باید یکی از ${IMPORT_TYPES.join(", ")} باشد`,
+  }),
+});
 
 const productRefSchema = z.object({
   productId: z.string().trim().min(1).optional(),

@@ -26,16 +26,22 @@
 `SalesRecord[]`، `PriceSuggestion[]`، `Alert[]`). جزئیات: [[entities/data-model]].
 
 ## لایه API
-هفت گروه route روی پیشوند `/sellers` و `/products/:id/...`. جزئیات: [[entities/api-routes]].
+هشت گروه route روی پیشوند `/sellers` و `/products/...`. احراز هویت با کلید API (`Authorization:
+Bearer` یا `x-api-key`)، اعتبارسنجی ورودی با zod در `src/lib/validate.ts`، و محافظت پایه (helmet +
+CORS allowlist + rate limit + سقف اندازه بدنه + تایم‌اوت سرور) همه از env قابل تنظیم‌اند.
+جزئیات: [[entities/api-routes]].
 
 ## وضعیت فعلی
 - کد MVP نوشته شده (routes + services + schema)، از نظر type-safe.
-- `npm install` / `prisma generate` / `prisma migrate` هنوز روی سرور واقعی اجرا نشده (طبق قانون
-  پلتفرم، بیلد سنگین داخل کانتینر ایجنت انجام نمی‌شود).
-- تست واحد هنوز نوشته نشده (به‌عنوان اولین آیتم بک‌لاگ ثبت شده: `docs/ISSUES.md`).
-- بک‌لاگ نزدیک‌مدت و نقشه راه آینده آماده ساخت GitHub Issue: `docs/ISSUES.md`.
-- ریپوی گیت‌هاب: `github.com/massoudsh/sudban` (push شده تا کامیت `87a1713`؛ کامیت‌های بعدی محلی
-  در انتظار توکن جدید برای push هستند).
+- تست واحد هر شش موتور + Sales Trend با Vitest نوشته شده (`npm test`)؛ جزئیات پوشش:
+  [[entities/pricing-engines]].
+- **نتیجه اجرای واقعی تست‌ها (محلی، ۲۰۲۶-۰۹-۱۹):** `vitest run` → **۹۸ تست در ۷ فایل، همه پاس
+  (۰ خطا)**؛ `tsc -p tsconfig.json --noEmit` بدون خطا.
+- `prisma generate` / `prisma migrate` هنوز روی سرور واقعی استقرار اجرا نشده (طبق قانون پلتفرم،
+  بیلد سنگین داخل کانتینر ایجنت انجام نمی‌شود)؛ نصب پکیج‌ها و اجرای تست، فقط توسعه‌ای/محلی بوده است.
+- بک‌لاگ نزدیک‌مدت و نقشه راه آینده: `docs/ISSUES.md`؛ همه ۱۳ مورد GitHub Issue واقعی دارند.
+- ریپوی گیت‌هاب: `github.com/massoudsh/sudban` — کارهای حل #1/#2/#5 روی برنچ `fix/open-issues-batch`
+  و در قالب PR ارائه شده است.
 
 ## پشته فناوری
 Node.js, TypeScript, Express, Prisma ORM, PostgreSQL.

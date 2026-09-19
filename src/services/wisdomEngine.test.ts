@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { generateWisdom } from "./wisdomEngine";
+import { generateWisdom, WisdomInput } from "./wisdomEngine";
 import { CostBreakdown, CompetitivePosition, PriceSuggestionResult, RiskAlertCandidate, SalesTrend } from "../types";
 
 const costs: CostBreakdown = {
@@ -149,5 +149,150 @@ describe("generateWisdom", () => {
         priorityRank[report.insights[i - 1].priority]
       );
     }
+  });
+});
+
+// ---- مقادیر مرزی: آستانه‌های اختلاف قیمت/حاشیه سود، مرزهای جایگاه رقابتی، و نگاشت توصیه هشدارها ----
+
+const flatCosts: CostBreakdown = {
+  unitCost: 100_000,
+  packagingCost: 0,
+  shippingCost: 0,
+  otherFixedCost: 0,
+  commissionRate: 0,
+  returnRate: 0,
+};
+
+const noCompetitors: CompetitivePosition = {
+  min: null,
+  max: null,
+  median: null,
+  avg: null,
+  sampleSize: 0,
+  currentPricePercentile: null,
+};
+
+const atPercentile = (currentPricePercentile: number | null): CompetitivePosition => ({
+  ...neutralCompetitors,
+  currentPricePercentile,
+});
+
+/**
+ * ورودی پایه تست‌های مرزی: قیمت ۲۰۰۰۰۰ و بهای تمام‌شده ثابت ۱۰۰۰۰۰
+ * => marginPct دقیقاً ۰.۵ (بدون وابستگی به قیمت، چون commissionRate صفر است).
+ */
+function boundaryInput(overrides: Partial<WisdomInput> = {}): WisdomInput {
+  return {
+    currentPrice: 200_000,
+    costs: flatCosts,
+    minMarginPct: 0.45,
+    competitivePosition: noCompetitors,
+    suggestion: suggestion({ suggestedPrice: 200_000 }),
+    risks: noRisks,
+    salesTrend: unknownTrend,
+    ...overrides,
+  };
+}
+
+describe("generateWisdom — مرزهای آستانه‌ها", () => {
+  it("روی مرز دقیق اختلاف ۵٪ بینش OPPORTUNITY با اولویت MEDIUM تولید می‌شود (شرط >= نه >)", () => {
+    const report = generateWisdom(boundaryInput({ suggestion: suggestion({ suggestedPrice: 210_000 }) }));
+    const gapInsight = report.insights.find((i) => i.title === "فاصله از قیمت پیشنهادی");
+    expect(gapInsight?.category).toBe("OPPORTUNITY");
+    expect(gapInsight?.priority).toBe("MEDIUM");
+  });
+
+  it("با اختلاف ۴.۹٪ (کمی زیر آستانه) هیچ بینش اختلافی تولید نمی‌شود", () => {
+    const report = generateWisdom(boundaryInput({ suggestion: suggestion({ suggestedPrice: 209_800 }) }));
+    expect(report.insights.some((i) => i.title === "فاصله از قیمت پیشنهادی")).toBe(false);
+  });
+
+  it("روی مرز دقیق اختلاف ۱۵٪ اولویت بینش به HIGH ارتقا می‌یابد", () => {
+    const report = generateWisdom(boundaryInput({ suggestion: suggestion({ suggestedPrice: 230_000 }) }));
+    const gapInsight = report.insights.find((i) => i.title === "فاصله از قیمت پیشنهادی");
+    expect(gapInsight?.priority).toBe("HIGH");
+  });
+
+  it("حاشیه سود دقیقاً روی مرز «سالم» (minMarginPct + ۵٪) بینش MARGIN می‌دهد", () => {
+    const report = generateWisdom(boundaryInput()); // marginPct=0.5 و minMarginPct=0.45
+    expect(report.insights).toHaveLength(1);
+    expect(report.insights[0].category).toBe("MARGIN");
+    expect(report.insights[0].priority).toBe("LOW");
+  });
+
+  it("با حاشیه سود کمی زیر مرز «سالم» هیچ بینشی تولید نمی‌شود و توصیه پیش‌فرض برمی‌گردد", () => {
+    const report = generateWisdom(boundaryInput({ minMarginPct: 0.450001 }));
+    expect(report.insights).toEqual([]);
+    expect(report.topRecommendation).toBe("وضعیت این محصول پایدار است؛ نیاز به اقدام فوری نیست.");
+  });
+
+  it("بینش «وضعیت پایدار» فقط در بازه درصدی ۳۵ تا ۶۵ (شامل دو سر) تولید می‌شود", () => {
+    const base = boundaryInput({ minMarginPct: 0.450001 }); // بدون بینش MARGIN
+
+    for (const percentile of [35, 50, 65]) {
+      const report = generateWisdom({ ...base, competitivePosition: atPercentile(percentile) });
+      expect(report.insights).toHaveLength(1);
+      expect(report.insights[0].category).toBe("COMPETITIVE");
+      expect(report.insights[0].priority).toBe("LOW");
+    }
+
+    for (const percentile of [34, 66]) {
+      const report = generateWisdom({ ...base, competitivePosition: atPercentile(percentile) });
+      expect(report.insights).toEqual([]);
+    }
+  });
+
+  it("با percentile خنثی ولی بدون داده رقیب (null)، بینش «وضعیت پایدار» تولید نمی‌شود", () => {
+    const report = generateWisdom(boundaryInput({ minMarginPct: 0.450001 }));
+    expect(report.insights.some((i) => i.category === "COMPETITIVE")).toBe(false);
+  });
+
+  it("روند نزولی با حاشیه سود دور از کف اولویت MEDIUM می‌گیرد (نه HIGH)", () => {
+    const downTrend: SalesTrend = { direction: "DOWN", recentAvgQuantity: 5, previousAvgQuantity: 10, changePct: -0.5 };
+    const report = generateWisdom(boundaryInput({ minMarginPct: 0.1, salesTrend: downTrend }));
+    // marginPct=0.5 در برابر آستانه کف 0.1+0.03=0.13
+    expect(report.insights.find((i) => i.category === "TREND")?.priority).toBe("MEDIUM");
+  });
+
+  it("روند STABLE هیچ بینش TREND تولید نمی‌کند (فقط UP و DOWN بینش دارند)", () => {
+    const stableTrend: SalesTrend = { direction: "STABLE", recentAvgQuantity: 10, previousAvgQuantity: 10, changePct: 0 };
+    const report = generateWisdom(boundaryInput({ salesTrend: stableTrend }));
+    expect(report.insights.some((i) => i.category === "TREND")).toBe(false);
+  });
+
+  it("هر نوع هشدار ریسک توصیه متناظر خودش را می‌گیرد (CRITICAL->HIGH و WARNING->MEDIUM)", () => {
+    const cases: Array<[RiskAlertCandidate["type"], "HIGH" | "MEDIUM", string]> = [
+      ["LOSS_MAKING", "HIGH", "کف بهای تمام‌شده"],
+      ["LOW_MARGIN", "MEDIUM", "بهای تمام‌شده را کاهش دهید"],
+      ["UNCOMPETITIVE_HIGH", "MEDIUM", "باند رقبا"],
+      ["PRICE_WAR_RISK", "MEDIUM", "جنگ قیمتی"],
+    ];
+
+    for (const [type, priority, needle] of cases) {
+      const risk: RiskAlertCandidate = {
+        type,
+        severity: priority === "HIGH" ? "CRITICAL" : "WARNING",
+        message: "پیام تست",
+        context: {},
+      };
+      const report = generateWisdom(boundaryInput({ risks: [risk] }));
+      const riskInsight = report.insights.find((i) => i.category === "RISK");
+      expect(riskInsight?.title).toBe(type);
+      expect(riskInsight?.priority).toBe(priority);
+      expect(riskInsight?.recommendation).toContain(needle);
+    }
+  });
+
+  it("توصیه محوری برابر recommendation اولین بینش پس از مرتب‌سازی اولویت است", () => {
+    const downTrend: SalesTrend = { direction: "DOWN", recentAvgQuantity: 5, previousAvgQuantity: 10, changePct: -0.5 };
+    const report = generateWisdom(
+      boundaryInput({
+        minMarginPct: 0.1,
+        salesTrend: downTrend,
+        suggestion: suggestion({ suggestedPrice: 230_000 }), // اختلاف ۱۵٪ -> OPPORTUNITY با اولویت HIGH
+      })
+    );
+    expect(report.insights.length).toBeGreaterThan(1);
+    expect(report.topRecommendation).toBe(report.insights[0].recommendation);
   });
 });

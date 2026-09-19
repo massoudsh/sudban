@@ -130,3 +130,92 @@ describe("suggestPrice", () => {
     expect(atMedian.competitivenessScore).toBeGreaterThan(premium.competitivenessScore);
   });
 });
+
+// ---- مقادیر مرزی: رُندکردن، کلمپ امتیاز، باند تک‌قیمتی ----
+
+describe("suggestPrice — رُندکردن و مرزهای امتیاز", () => {
+  it("suggestedPrice و costFloor همیشه عدد صحیح (رُندشده) هستند", () => {
+    const fractionalMarket: CompetitivePosition = {
+      min: 200_000,
+      max: 220_001,
+      median: 220_000,
+      avg: 220_000,
+      sampleSize: 3,
+      currentPricePercentile: 50,
+    };
+    const result = suggestPrice({
+      costs,
+      minMarginPct: 0.1,
+      strategy: "PREMIUM",
+      competitivePosition: fractionalMarket,
+    });
+    // لنگر = 220000 + (220001 - 220000) * 0.6 = 220000.6 -> رُند به 220001
+    expect(result.suggestedPrice).toBe(220_001);
+    expect(Number.isInteger(result.suggestedPrice)).toBe(true);
+    expect(Number.isInteger(result.costFloor)).toBe(true);
+  });
+
+  it("competitivenessScore هرگز منفی نمی‌شود (کلمپ کف صفر)", () => {
+    const result = suggestPrice({
+      costs,
+      minMarginPct: 0.1,
+      strategy: "MATCH",
+      competitivePosition: withCompetitors,
+      ceilingPrice: 140_000, // بسیار پایین‌تر از باند رقبا (۱۸۰k..۲۶۰k)
+    });
+    expect(result.suggestedPrice).toBe(140_000);
+    expect(result.competitivenessScore).toBe(0);
+  });
+
+  it("با باند تک‌قیمتی (max === min) امتیاز خنثی ۵۰ می‌ماند و تقسیم بر صفر رخ نمی‌دهد", () => {
+    const flatMarket: CompetitivePosition = {
+      min: 200_000,
+      max: 200_000,
+      median: 200_000,
+      avg: 200_000,
+      sampleSize: 2,
+      currentPricePercentile: 100,
+    };
+    const result = suggestPrice({
+      costs,
+      minMarginPct: 0.1,
+      strategy: "MATCH",
+      competitivePosition: flatMarket,
+    });
+    expect(result.suggestedPrice).toBe(200_000);
+    expect(result.competitivenessScore).toBe(50);
+  });
+
+  it("امتیاز حداکثر ۱۰۰ است وقتی قیمت پیشنهادی دقیقاً روی میانه بنشیند", () => {
+    const result = suggestPrice({
+      costs,
+      minMarginPct: 0.1,
+      strategy: "MATCH",
+      competitivePosition: withCompetitors,
+    });
+    expect(result.competitivenessScore).toBe(100);
+  });
+
+  it("کلمپ به سقف فروشنده در rationale توضیح داده می‌شود", () => {
+    const result = suggestPrice({
+      costs,
+      minMarginPct: 0.1,
+      strategy: "PREMIUM",
+      ceilingPrice: 210_000,
+      competitivePosition: withCompetitors,
+    });
+    expect(result.rationale.some((r) => r.includes("سقف تعیین‌شده توسط فروشنده"))).toBe(true);
+  });
+
+  it("نتیجه شامل استراتژی انتخاب‌شده و متن rationale غیرخالی است", () => {
+    const result = suggestPrice({
+      costs,
+      minMarginPct: 0.1,
+      strategy: "PENETRATION",
+      competitivePosition: withCompetitors,
+    });
+    expect(result.strategy).toBe("PENETRATION");
+    expect(result.rationale.length).toBeGreaterThan(0);
+    expect(result.expectedMarginPct).toBeGreaterThan(0);
+  });
+});

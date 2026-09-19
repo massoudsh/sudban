@@ -76,3 +76,78 @@ describe("simulateScenario", () => {
     expect(result.expectedProfit).toBeGreaterThan(0);
   });
 });
+
+// ---- مقادیر مرزی: baseline صفر، تقسیم بر صفر، و گردکردن ----
+
+describe("simulateScenario — مرزها و گردکردن", () => {
+  it("با baselineAvgQuantity صفر، مقدار/درآمد/درصد تغییر صفر می‌شود (بدون تقسیم بر صفر)", () => {
+    const result = simulateScenario({
+      costs,
+      hypotheticalPrice: 220_000,
+      baselinePrice: 200_000,
+      baselineAvgQuantity: 0,
+      elasticity: -1.5,
+    });
+    expect(result.expectedQuantity).toBe(0);
+    expect(result.expectedRevenue).toBe(0);
+    expect(result.expectedProfit).toBe(0);
+    expect(result.revenueChangePct).toBe(0);
+    expect(result.profitChangePct).toBe(0);
+  });
+
+  it("baselinePrice منفی هم خطا می‌دهد (نه فقط صفر)", () => {
+    expect(() =>
+      simulateScenario({ costs, hypotheticalPrice: 200_000, baselinePrice: -1, baselineAvgQuantity: 10 })
+    ).toThrow();
+  });
+
+  it("expectedQuantity حداکثر با دو رقم اعشار رُند می‌شود", () => {
+    const result = simulateScenario({
+      costs,
+      hypotheticalPrice: 200_000, // بدون تغییر قیمت
+      baselinePrice: 200_000,
+      baselineAvgQuantity: 10 / 3, // 3.3333...
+      elasticity: -1.5,
+    });
+    expect(result.expectedQuantity).toBe(3.33);
+    expect(result.quantityChangePct).toBeCloseTo(0, 12);
+  });
+
+  it("expectedRevenue و expectedProfit به عدد صحیح رُند می‌شوند", () => {
+    const result = simulateScenario({
+      costs,
+      hypotheticalPrice: 200_000,
+      baselinePrice: 200_000,
+      baselineAvgQuantity: 10.567,
+      elasticity: 0,
+    });
+    expect(result.expectedRevenue).toBe(2_113_400);
+    expect(Number.isInteger(result.expectedRevenue)).toBe(true);
+    expect(Number.isInteger(result.expectedProfit)).toBe(true);
+  });
+
+  it("هنگام تغییر ندادن قیمت، درصد تغییر درآمد و سود صفر است", () => {
+    const result = simulateScenario({
+      costs,
+      hypotheticalPrice: 200_000,
+      baselinePrice: 200_000,
+      baselineAvgQuantity: 42,
+    });
+    expect(result.quantityChangePct).toBeCloseTo(0, 12);
+    expect(result.revenueChangePct).toBe(0);
+    expect(result.profitChangePct).toBe(0);
+    expect(result.expectedQuantity).toBe(42);
+  });
+
+  it("با elasticity اکیداً مثبت (کالای مکمل/لوکس) افزایش قیمت مقدار فروش را هم بالا می‌برد", () => {
+    const result = simulateScenario({
+      costs,
+      hypotheticalPrice: 220_000,
+      baselinePrice: 200_000,
+      baselineAvgQuantity: 100,
+      elasticity: 1,
+    });
+    expect(result.expectedQuantity).toBeCloseTo(110, 6);
+    expect(result.quantityChangePct).toBeCloseTo(0.1, 9);
+  });
+});
