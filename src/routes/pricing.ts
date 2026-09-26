@@ -9,6 +9,7 @@ import { suggestPrice } from "../services/priceSuggestionEngine";
 import { simulateScenario } from "../services/scenarioSimulator";
 import { checkRisks } from "../services/riskAlertEngine";
 import { computeSalesTrend } from "../services/salesTrend";
+import { suggestMlPrice } from "../services/mlPriceEngine";
 import { generateWisdom } from "../services/wisdomEngine";
 import { notifyNewAlerts } from "../services/notifier";
 import { Strategy } from "../types";
@@ -74,6 +75,46 @@ pricingRouter.get(
         },
       });
 
+      res.json(result);
+    } catch (err) {
+      if (!handleContextError(err, res)) throw err;
+    }
+  }
+);
+
+// GET /products/:id/ml-suggestion?strategy=MATCH — پیشنهاد قیمت v2 مبتنی بر کشش فروش تاریخی
+pricingRouter.get(
+  "/:id/ml-suggestion",
+  requireOwnedProduct,
+  validate(strategyQuerySchema, "query"),
+  async (req, res) => {
+    const strategyParam = req.query.strategy as Strategy | undefined;
+
+    try {
+      const { costs, pricingRule, competitivePosition } = await loadProductPricingContext(req.params.id);
+      const salesRecords = await prisma.salesRecord.findMany({ where: { productId: req.params.id } });
+      const result = suggestMlPrice({
+        salesRecords,
+        costs,
+        minMarginPct: pricingRule.minMarginPct,
+        floorPrice: pricingRule.floorPrice,
+        ceilingPrice: pricingRule.ceilingPrice,
+        strategy: strategyParam || pricingRule.strategy,
+        competitivePosition,
+      });
+      await prisma.priceSuggestion.create({
+        data: {
+          productId: req.params.id,
+          suggestedPrice: result.suggestedPrice,
+          expectedMarginPct: result.expectedMarginPct,
+          competitivenessScore: result.competitivenessScore,
+          strategy: result.strategy,
+          rationale: result.rationale,
+        },
+      });
+      await prisma.usageEvent.create({
+        data: { sellerId: req.seller!.id, type: "PRICE_SUGGESTION", quantity: 1, metadata: { model: result.model } },
+      });
       res.json(result);
     } catch (err) {
       if (!handleContextError(err, res)) throw err;

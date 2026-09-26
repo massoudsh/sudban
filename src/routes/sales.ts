@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
-import { requireAuth, requireOwnedProduct } from "../lib/auth";
+import { requireAuth, requireOwnedProduct, requireRole } from "../lib/auth";
 import { validate } from "../lib/validate";
 import { salesRecordSchema } from "../lib/schemas";
 
@@ -9,7 +9,7 @@ export const salesRouter = Router();
 salesRouter.use(requireAuth);
 
 // POST /products/:id/sales — ثبت رکورد فروش تاریخی
-salesRouter.post("/:id/sales", requireOwnedProduct, validate(salesRecordSchema), async (req, res) => {
+salesRouter.post("/:id/sales", requireOwnedProduct, requireRole("OWNER", "MANAGER", "ANALYST"), validate(salesRecordSchema), async (req, res) => {
   const productId = req.params.id;
   const { price, quantity, channel, soldAt } = req.body;
 

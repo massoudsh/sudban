@@ -69,9 +69,24 @@ Authorization: Bearer sk_live_...
 | POST | `/products/bulk-import?type=cost-profiles\|sales\|competitor-prices` | بله | import دسته‌ای CSV/JSON |
 | GET | `/products/:id/margin?price=X` | بله | محاسبه حاشیه سود برای قیمت فرضی |
 | GET | `/products/:id/suggestion?strategy=MATCH` | بله | قیمت پیشنهادی موتور |
+| GET | `/products/:id/ml-suggestion?strategy=MATCH` | بله | قیمت پیشنهادی v2 مبتنی بر کشش فروش تاریخی |
 | POST | `/products/:id/simulate` | بله | شبیه‌سازی سناریوی تغییر قیمت |
 | GET | `/products/:id/alerts` | بله | هشدارهای فعال ریسک قیمت (+ اطلاع‌رسانی هشدار تازه) |
 | GET | `/products/:id/wisdom?strategy=MATCH` | بله | بینش‌های ترکیبی اولویت‌بندی‌شده + یک توصیه محوری (موتور خرد) |
+| GET | `/dashboard/wisdom` | بله | کارت‌های داشبورد Wisdom برای همه محصولات فروشنده |
+| GET | `/dashboard.html` | بله* | داشبورد HTML سبک؛ API key را در فرم می‌گیرد |
+| GET/POST/PATCH | `/sellers/me/team` و `/sellers/me/team/:memberId` | بله | مدیریت اعضای تیم و نقش‌ها |
+| PUT/GET | `/sellers/me/subscription` | بله | تنظیم و دریافت اشتراک فعال |
+| GET | `/sellers/me/billing/usage` | بله | خلاصه مصرف ماهانه و SKU فعال |
+| GET | `/billing/plans` | بله | پلن‌های نمونه billing |
+| POST | `/billing/usage-events` | بله | ثبت رخداد مصرف |
+| POST/GET | `/economic-signals` | بله | ثبت/دریافت سیگنال نرخ ارز یا تورم |
+| GET | `/products/:id/cost-adjustment-proposal` | بله | پیشنهاد تعدیل CostProfile بر اساس آخرین سیگنال اقتصادی |
+| POST | `/products/:id/competitor-sync-jobs` | بله | ساخت job برای sync قیمت رقبا |
+| POST | `/products/:id/price-push-jobs` | بله | ساخت job کنترل‌شده برای push قیمت |
+| GET/PATCH | `/products/integration-jobs` و `/products/integration-jobs/:jobId` | بله | مشاهده/به‌روزرسانی jobهای integration |
+
+*خود فایل HTML عمومی serve می‌شود، اما داده‌های dashboard بدون API key برنمی‌گردد.
 
 ## نمونه جریان کامل
 

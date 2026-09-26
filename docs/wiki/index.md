@@ -4,8 +4,8 @@
 - [[overview]] — یک‌نگاه کلی پروژه سودبان، وضعیت فعلی و پشته فناوری
 
 ## Entities (۳ صفحه)
-- [[entities/data-model]] — همه مدل‌های Prisma (Seller, Product, CostProfile, PricingRule, CompetitorPrice, SalesRecord, PriceSuggestion, Alert)
-- [[entities/pricing-engines]] — شش موتور منطق قیمت‌گذاری + Sales Trend (`src/services/*`)
+- [[entities/data-model]] — مدل‌های Prisma برای pricing، auth/RBAC، integration، economic signals و billing
+- [[entities/pricing-engines]] — موتورهای قیمت‌گذاری، Wisdom و ML Price Engine v2 (`src/services/*`)
 - [[entities/api-routes]] — همه route های Express (`src/routes/*`)
 
 ## Concepts (۲ صفحه)

@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="fa" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>داشبورد سودبان</title>
+    <style>
+      body { font-family: system-ui, sans-serif; margin: 0; background: #f8fafc; color: #0f172a; }
+      main { max-width: 960px; margin: 0 auto; padding: 32px 16px; }
+      form, article { background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 16px; margin: 12px 0; }
+      input, button { font: inherit; padding: 10px 12px; border-radius: 10px; border: 1px solid #cbd5e1; }
+      button { background: #0f172a; color: white; cursor: pointer; }
+      .grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); }
+      .muted { color: #64748b; }
+      .high { border-color: #ef4444; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>داشبورد Wisdom سودبان</h1>
+      <p class="muted">کلید API فروشنده را وارد کنید تا کارت‌های اولویت‌بندی‌شده قیمت، ریسک و روند فروش نمایش داده شود.</p>
+      <form id="auth-form">
+        <input id="api-key" type="password" placeholder="API Key" autocomplete="off" size="44" />
+        <button>نمایش داشبورد</button>
+      </form>
+      <section id="cards" class="grid"></section>
+    </main>
+    <script>
+      const form = document.querySelector("#auth-form");
+      const cards = document.querySelector("#cards");
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        cards.textContent = "در حال دریافت...";
+        const apiKey = document.querySelector("#api-key").value;
+        const response = await fetch("/dashboard/wisdom", { headers: { Authorization: `Bearer ${apiKey}` } });
+        const data = await response.json();
+        if (!response.ok) {
+          cards.textContent = data.error || "خطا در دریافت داشبورد";
+          return;
+        }
+        cards.innerHTML = "";
+        for (const card of data.cards) {
+          const article = document.createElement("article");
+          const insight = card.wisdom?.insights?.[0];
+          article.className = insight?.priority === "HIGH" ? "high" : "";
+          article.innerHTML = `<h2>${card.product.name}</h2><p class="muted">SKU: ${card.product.sku}</p><p>${card.setupRequired ? "نیازمند تکمیل داده قیمت‌گذاری" : card.wisdom.topRecommendation}</p><p>قیمت پیشنهادی: ${card.suggestion?.suggestedPrice ?? "-"}</p>`;
+          cards.appendChild(article);
+        }
+      });
+    </script>
+  </body>
+</html>

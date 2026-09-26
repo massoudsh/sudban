@@ -1,5 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { Seller } from "@prisma/client";
+import { Seller, SellerRole } from "@prisma/client";
 import { prisma } from "./prisma";
 import { extractApiKeyPrefix, verifyApiKey } from "./apiKey";
 
@@ -49,6 +49,20 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
  * تضمین می‌کند محصول درخواستی متعلق به فروشنده احرازشده است.
  * روی روت‌هایی که پارامتر :id همان productId است استفاده می‌شود.
  */
+export function requireRole(...allowedRoles: SellerRole[]) {
+  return (req: Request, res: Response, next: NextFunction): void => {
+    if (!req.seller) {
+      res.status(401).json({ error: "کلید API الزامی است" });
+      return;
+    }
+    if (!allowedRoles.includes(req.seller.role)) {
+      res.status(403).json({ error: "سطح دسترسی برای انجام این عملیات کافی نیست" });
+      return;
+    }
+    next();
+  };
+}
+
 export async function requireOwnedProduct(
   req: Request,
   res: Response,

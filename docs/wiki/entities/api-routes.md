@@ -1,27 +1,30 @@
 # API Routes (`src/routes/*` + `src/server.ts`)
 
-> هشت روتر Express؛ همه به‌جز `sellers` زیر پیشوند `/products` mount شده‌اند و مسیر داخلی خودشان را
-> با `/:id/...` تعریف می‌کنند.
+> دوازده روتر Express؛ routeهای محصول زیر `/products`، routeهای فروشنده زیر `/sellers` و dashboard/billing/economic در سطح ریشه mount شده‌اند.
 
 ## مسئولیت‌ها
 | روتر | مسیر پایه | عملیات |
 |---|---|---|
-| `sellersRouter` | `/sellers` | ساخت فروشنده + صدور کلید API، اطلاعات فروشنده، تنظیم کانال هشدار، لیست محصولات فروشنده |
+| `sellersRouter` | `/sellers` | ساخت فروشنده + صدور کلید API، اطلاعات فروشنده، تنظیم کانال هشدار، مدیریت team/subscription/usage |
 | `productsRouter` | `/products` | CRUD محصول |
 | `costsRouter` | `/products/:id/costs` | ثبت/تاریخچه `CostProfile` |
 | `pricingRulesRouter` | `/products/:id/pricing-rule` | تعیین/دریافت `PricingRule` |
 | `competitorsRouter` | `/products/:id/competitor-prices` | ثبت/دریافت `CompetitorPrice` |
 | `salesRouter` | `/products/:id/sales` | ثبت/دریافت `SalesRecord` |
-| `pricingRouter` | `/products/:id/margin`, `/suggestion`, `/simulate`, `/alerts`, `/wisdom` | صدا زدن موتورهای قیمت‌گذاری |
+| `pricingRouter` | `/products/:id/margin`, `/suggestion`, `/ml-suggestion`, `/simulate`, `/alerts`, `/wisdom` | صدا زدن موتورهای قیمت‌گذاری |
 | `bulkImportRouter` | `/products/bulk-import?type=...` | import دسته‌ای CSV/JSON برای سه مدل |
+| `integrationsRouter` | `/products/:id/competitor-sync-jobs`, `/price-push-jobs`, `/products/integration-jobs` | صف integration و price-push |
+| `economicSignalsRouter` | `/economic-signals`, `/products/:id/cost-adjustment-proposal` | ثبت سیگنال اقتصادی و پیشنهاد تعدیل هزینه |
+| `dashboardRouter` | `/dashboard/wisdom` | کارت‌های Wisdom برای dashboard |
+| `billingRouter` | `/billing/plans`, `/billing/usage-events` | پلن‌ها و رخدادهای مصرف |
 
 ## وابستگی‌ها
 - [[entities/pricing-engines]] — `pricingRouter` مستقیماً این موتورها را فراخوانی می‌کند
 - [[concepts/wisdom-engine]] — منطق endpoint `GET /:id/wisdom`
 - [[entities/data-model]] — همه روترها روی مدل‌های Prisma عمل می‌کنند
 - `src/lib/productContext.ts` — helper مشترک برای بارگذاری محصول + آخرین CostProfile فعال + PricingRule
-- `src/lib/auth.ts` — `requireAuth` (کلید API) و `requireOwnedProduct` (مالکیت): روی همه routeهای
-  `/products/*` و `/sellers/me*` اعمال می‌شود
+- `src/lib/auth.ts` — `requireAuth` (کلید API)، `requireOwnedProduct` (مالکیت) و `requireRole` (RBAC): روی routeهای
+  محافظت‌شده اعمال می‌شود
 - `src/lib/validate.ts` — میان‌افزار اعتبارسنجی zod روی `body`/`query`؛ اسکیماها در `src/lib/schemas.ts`
 
 ## قراردادها / Edge cases
@@ -44,6 +47,9 @@
   پاسخ `{ successCount, errorCount, errors }` است (اگر هیچ ردیفی موفق نشود، وضعیت `400`).
 - `GET /:id/wisdom` نتیجه را persist نمی‌کند و `checkRisks`/`suggestPrice` را مستقیم (بدون DB
   side-effect) فراخوانی می‌کند؛ در مقابل `GET /:id/suggestion` یک `PriceSuggestion` ذخیره می‌کند.
+- `GET /:id/ml-suggestion` با داده فروش تاریخی مدل کشش قیمت را اجرا می‌کند، خروجی را در `PriceSuggestion` و مصرف را در `UsageEvent` ذخیره می‌کند.
+- routeهای integration فقط job ثبت/به‌روزرسانی می‌کنند؛ اتصال واقعی marketplace یا worker بیرون از request path است.
+- `public/dashboard.html` فایل استاتیک است؛ داده‌های dashboard فقط با `GET /dashboard/wisdom` و API key برمی‌گردد.
 
 ## منابع کد
 - `src/server.ts:15-111` — نمونه‌سازی اپ، زنجیره میان‌افزار، mount روترها، هندلر خطا، تایم‌اوت‌ها

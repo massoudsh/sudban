@@ -3,8 +3,8 @@
 > همه‌ی مدل‌های اصلی دیتابیس سودبان، یک‌جا (چون همگی یک اسکیمای واحد و به‌شدت به‌هم‌مرتبط‌اند).
 
 ## مسئولیت‌ها
-- نگهداری فروشندگان، محصولات، بهای تمام‌شده نسخه‌بندی‌شده، قواعد قیمت‌گذاری، قیمت رقبا،
-  تاریخچه فروش، پیشنهادهای قیمت و هشدارهای ریسک.
+- نگهداری فروشندگان، تیم/نقش‌ها، محصولات، بهای تمام‌شده نسخه‌بندی‌شده، قواعد قیمت‌گذاری، قیمت رقبا،
+  تاریخچه فروش، پیشنهادهای قیمت، هشدارهای ریسک، jobهای integration، سیگنال‌های اقتصادی و مصرف billing.
 
 ## مدل‌ها
 | مدل | نقش | نکته کلیدی |
@@ -17,6 +17,11 @@
 | `SalesRecord` | تراکنش/دوره فروش واقعی | ورودی مدل کشش قیمتی در شبیه‌سازی |
 | `PriceSuggestion` | خروجی ذخیره‌شده موتور پیشنهاد قیمت | `rationale` به‌صورت آرایه JSON از دلایل |
 | `Alert` | هشدار ریسک صادرشده روی یک محصول | `type` (LOSS_MAKING/LOW_MARGIN/UNCOMPETITIVE_HIGH/PRICE_WAR_RISK), `severity` |
+| `SellerTeamMember` | عضو/دعوت سازمانی فروشنده | نقش‌های `OWNER`/`MANAGER`/`ANALYST`/`VIEWER` برای RBAC |
+| `IntegrationJob` | صف job برای sync رقیب و price-push | نوع job، وضعیت، کانال، payload/result/error |
+| `EconomicSignal` | سیگنال نرخ ارز/تورم فروشنده | ورودی پیشنهاد تعدیل CostProfile |
+| `UsageEvent` | رخداد مصرف برای metering | type + quantity + metadata |
+| `Subscription` | اشتراک فعال/تاریخی فروشنده | پلن، سقف SKU، درخواست‌های included و قیمت overage |
 
 ## وابستگی‌ها
 - [[entities/pricing-engines]] — این مدل‌ها ورودی/خروجی مستقیم پنج موتور هستند
@@ -29,5 +34,5 @@
 - حذف `Seller` یا `Product` به‌صورت Cascade روی فرزندان اثر می‌گذارد (`onDelete: Cascade`).
 
 ## منابع کد
-- `prisma/schema.prisma:31-170` — تعریف کامل ۸ مدل و ۳ enum
+- `prisma/schema.prisma:31-317` — تعریف مدل‌ها و enumهای فروشنده، محصول، pricing، integration و billing
 - `docs/ARCHITECTURE.md` بخش ۲-۳ — توضیح تصمیم‌های طراحی اسکیما

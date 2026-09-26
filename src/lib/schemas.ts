@@ -1,6 +1,8 @@
 import { z } from "zod";
 
 const STRATEGIES = ["MATCH", "PREMIUM", "PENETRATION"] as const;
+const SELLER_ROLES = ["OWNER", "MANAGER", "ANALYST", "VIEWER"] as const;
+const INTEGRATION_JOB_STATUSES = ["QUEUED", "PROCESSING", "COMPLETED", "FAILED", "CANCELLED"] as const;
 
 export const createSellerSchema = z.object({
   name: z.string().trim().min(1, "name الزامی است"),
@@ -132,3 +134,66 @@ export const notificationSettingsSchema = z
   .refine((data) => Object.keys(data).length > 0, {
     message: "حداقل یکی از فیلدهای telegramChatId، notifyEmail یا notifyPhone باید ارسال شود",
   });
+
+export const createTeamMemberSchema = z.object({
+  email: z.string().trim().email("email نامعتبر است"),
+  name: z.string().trim().min(1).optional().nullable(),
+  role: z.enum(SELLER_ROLES).default("VIEWER"),
+});
+
+export const updateTeamMemberSchema = z
+  .object({
+    name: z.string().trim().min(1).optional().nullable(),
+    role: z.enum(SELLER_ROLES).optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine((data) => Object.keys(data).length > 0, { message: "حداقل یک فیلد برای به‌روزرسانی لازم است" });
+
+export const competitorSyncJobSchema = z.object({
+  channel: z.string().trim().min(1, "channel الزامی است"),
+  source: z.string().trim().min(1).optional().nullable(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const pricePushJobSchema = z.object({
+  channel: z.string().trim().min(1, "channel الزامی است"),
+  targetPrice: z.number().positive("targetPrice باید مثبت باشد"),
+  riskAcknowledged: z.literal(true, {
+    message: "برای جلوگیری از تغییر قیمت ناخواسته، riskAcknowledged باید true باشد",
+  }),
+  externalProductId: z.string().trim().min(1).optional().nullable(),
+});
+
+export const integrationJobStatusSchema = z.object({
+  status: z.enum(INTEGRATION_JOB_STATUSES),
+  result: z.record(z.string(), z.unknown()).optional().nullable(),
+  error: z.string().trim().min(1).optional().nullable(),
+});
+
+export const economicSignalSchema = z
+  .object({
+    source: z.string().trim().min(1, "source الزامی است"),
+    currency: z.string().trim().min(1).default("IRR"),
+    rate: z.number().positive().optional().nullable(),
+    inflationPct: z.number().optional().nullable(),
+    capturedAt: z.coerce.date().optional(),
+    note: z.string().trim().min(1).optional().nullable(),
+  })
+  .refine((data) => data.rate != null || data.inflationPct != null, {
+    message: "حداقل یکی از rate یا inflationPct الزامی است",
+  });
+
+export const usageEventSchema = z.object({
+  type: z.enum(["API_REQUEST", "PRICE_SUGGESTION", "BULK_IMPORT_ROW", "ALERT_NOTIFICATION", "PRICE_PUSH_JOB"]),
+  quantity: z.number().int().positive().default(1),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+});
+
+export const subscriptionSchema = z.object({
+  plan: z.string().trim().min(1),
+  activeSkuLimit: z.number().int().positive(),
+  includedApiRequests: z.number().int().nonnegative(),
+  monthlyBasePrice: z.number().nonnegative(),
+  overageUnitPrice: z.number().nonnegative(),
+  endsAt: z.coerce.date().optional().nullable(),
+});

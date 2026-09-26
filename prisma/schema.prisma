@@ -11,9 +11,9 @@ datasource db {
 }
 
 enum PricingStrategy {
-  MATCH        // نزدیک به میانه بازار
-  PREMIUM      // بالاتر از میانه بازار
-  PENETRATION  // نزدیک به کف بازار
+  MATCH // نزدیک به میانه بازار
+  PREMIUM // بالاتر از میانه بازار
+  PENETRATION // نزدیک به کف بازار
 }
 
 enum AlertType {
@@ -28,14 +28,42 @@ enum AlertSeverity {
   WARNING
 }
 
+enum SellerRole {
+  OWNER
+  MANAGER
+  ANALYST
+  VIEWER
+}
+
+enum IntegrationJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum IntegrationJobType {
+  COMPETITOR_PRICE_SYNC
+  PRICE_PUSH
+}
+
+enum UsageEventType {
+  API_REQUEST
+  PRICE_SUGGESTION
+  BULK_IMPORT_ROW
+  ALERT_NOTIFICATION
+  PRICE_PUSH_JOB
+}
+
 model Seller {
-  id        String    @id @default(cuid())
+  id        String   @id @default(cuid())
   name      String
-  email     String    @unique
-  createdAt DateTime  @default(now())
+  email     String   @unique
+  createdAt DateTime @default(now())
 
   /// پیشوند غیرمحرمانه کلید API (برای جست‌وجوی سریع)؛ خود کلید فقط یک‌بار در پاسخ ساخت نمایش داده می‌شود.
-  apiKeyPrefix String  @unique
+  apiKeyPrefix String @unique
   /// هش bcrypt کلید API کامل — هرگز خود کلید ذخیره نمی‌شود.
   apiKeyHash   String
 
@@ -46,20 +74,27 @@ model Seller {
   /// شماره موبایل برای پیامک هشدار (اختیاری)
   notifyPhone    String?
 
-  products  Product[]
+  role SellerRole @default(OWNER)
+
+  products        Product[]
+  teamMembers     SellerTeamMember[]
+  integrationJobs IntegrationJob[]
+  economicSignals EconomicSignal[]
+  usageEvents     UsageEvent[]
+  subscriptions   Subscription[]
 
   @@map("sellers")
 }
 
 model Product {
-  id        String   @id @default(cuid())
-  sellerId  String
-  seller    Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  id       String @id @default(cuid())
+  sellerId String
+  seller   Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
 
-  sku       String
-  name      String
-  category  String?
-  currentPrice Float?  // آخرین قیمت فروش فعلی (برای محاسبه سریع وضعیت)
+  sku          String
+  name         String
+  category     String?
+  currentPrice Float? // آخرین قیمت فروش فعلی (برای محاسبه سریع وضعیت)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -70,6 +105,7 @@ model Product {
   salesRecords     SalesRecord[]
   suggestions      PriceSuggestion[]
   alerts           Alert[]
+  integrationJobs  IntegrationJob[]
 
   @@unique([sellerId, sku])
   @@index([sellerId])
@@ -79,50 +115,50 @@ model Product {
 /// بهای تمام‌شده نسخه‌بندی‌شده؛ چون در اقتصاد ایران هزینه‌ها سریع تغییر می‌کند
 /// همیشه رکورد جدید اضافه می‌شود و isActive روی جدید‌ترین true است.
 model CostProfile {
-  id              String   @id @default(cuid())
-  productId       String
-  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  unitCost        Float    // بهای خرید/تولید هر واحد
-  packagingCost   Float    @default(0)
-  shippingCost    Float    @default(0)
-  otherFixedCost  Float    @default(0)   // سایر هزینه‌های ثابت به ازای واحد
-  commissionRate  Float    @default(0)   // نسبت از قیمت فروش (مثلاً کمیسیون مارکت‌پلیس) — بین ۰ و ۱
-  returnRate      Float    @default(0)   // نرخ مرجوعی — بین ۰ و ۱
+  unitCost       Float // بهای خرید/تولید هر واحد
+  packagingCost  Float @default(0)
+  shippingCost   Float @default(0)
+  otherFixedCost Float @default(0) // سایر هزینه‌های ثابت به ازای واحد
+  commissionRate Float @default(0) // نسبت از قیمت فروش (مثلاً کمیسیون مارکت‌پلیس) — بین ۰ و ۱
+  returnRate     Float @default(0) // نرخ مرجوعی — بین ۰ و ۱
 
-  isActive        Boolean  @default(true)
-  effectiveFrom   DateTime @default(now())
-  createdAt       DateTime @default(now())
+  isActive      Boolean  @default(true)
+  effectiveFrom DateTime @default(now())
+  createdAt     DateTime @default(now())
 
   @@index([productId, isActive])
   @@map("cost_profiles")
 }
 
 model PricingRule {
-  id                String          @id @default(cuid())
-  productId         String          @unique
-  product           Product         @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  productId String  @unique
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  minMarginPct      Float           // حداقل حاشیه سود قابل قبول (۰ تا ۱)
-  targetMarginPct   Float?          // حاشیه سود هدف (اختیاری)
-  floorPrice        Float?          // کف قیمت دستی (اگر تعیین شده، اولویت با سخت‌گیرانه‌تر است)
-  ceilingPrice      Float?          // سقف قیمت دستی
-  strategy          PricingStrategy @default(MATCH)
-  priceElasticity   Float?          // ضریب کشش قیمتی سفارشی (پیش‌فرض سیستمی اگر خالی باشد)
+  minMarginPct    Float // حداقل حاشیه سود قابل قبول (۰ تا ۱)
+  targetMarginPct Float? // حاشیه سود هدف (اختیاری)
+  floorPrice      Float? // کف قیمت دستی (اگر تعیین شده، اولویت با سخت‌گیرانه‌تر است)
+  ceilingPrice    Float? // سقف قیمت دستی
+  strategy        PricingStrategy @default(MATCH)
+  priceElasticity Float? // ضریب کشش قیمتی سفارشی (پیش‌فرض سیستمی اگر خالی باشد)
 
-  updatedAt         DateTime        @updatedAt
-  createdAt         DateTime        @default(now())
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
 
   @@map("pricing_rules")
 }
 
 model CompetitorPrice {
-  id             String   @id @default(cuid())
-  productId      String
-  product        Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
   competitorName String
-  channel        String   // مثلاً: digikala, basalam, torob, website-x
+  channel        String // مثلاً: digikala, basalam, torob, website-x
   price          Float
   currency       String   @default("IRR")
   capturedAt     DateTime @default(now())
@@ -132,51 +168,142 @@ model CompetitorPrice {
 }
 
 model SalesRecord {
-  id         String   @id @default(cuid())
-  productId  String
-  product    Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  price      Float    // قیمت فروش واقعی در این تراکنش/دوره
-  quantity   Int
-  channel    String?
-  soldAt     DateTime
+  price    Float // قیمت فروش واقعی در این تراکنش/دوره
+  quantity Int
+  channel  String?
+  soldAt   DateTime
 
-  createdAt  DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([productId, soldAt])
   @@map("sales_records")
 }
 
 model PriceSuggestion {
-  id                    String   @id @default(cuid())
-  productId             String
-  product               Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  suggestedPrice        Float
-  expectedMarginPct     Float
-  competitivenessScore  Float    // ۰ تا ۱۰۰: جایگاه نسبت به باند رقبا
-  strategy              PricingStrategy
-  rationale             Json     // آرایه رشته‌ای از دلایل تصمیم
+  suggestedPrice       Float
+  expectedMarginPct    Float
+  competitivenessScore Float // ۰ تا ۱۰۰: جایگاه نسبت به باند رقبا
+  strategy             PricingStrategy
+  rationale            Json // آرایه رشته‌ای از دلایل تصمیم
 
-  createdAt             DateTime @default(now())
+  createdAt DateTime @default(now())
 
   @@index([productId, createdAt])
   @@map("price_suggestions")
 }
 
 model Alert {
-  id          String        @id @default(cuid())
-  productId   String
-  product     Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  type        AlertType
-  severity    AlertSeverity
-  message     String
-  context     Json?         // داده کمکی (مثلاً قیمت، حاشیه سود لحظه صدور)
+  type     AlertType
+  severity AlertSeverity
+  message  String
+  context  Json? // داده کمکی (مثلاً قیمت، حاشیه سود لحظه صدور)
 
-  resolvedAt  DateTime?
-  createdAt   DateTime      @default(now())
+  resolvedAt DateTime?
+  createdAt  DateTime  @default(now())
 
   @@index([productId, resolvedAt])
   @@map("alerts")
+}
+
+model SellerTeamMember {
+  id       String @id @default(cuid())
+  sellerId String
+  seller   Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  email    String
+  name     String?
+  role     SellerRole @default(VIEWER)
+  isActive Boolean    @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([sellerId, email])
+  @@index([sellerId, role])
+  @@map("seller_team_members")
+}
+
+model IntegrationJob {
+  id        String   @id @default(cuid())
+  sellerId  String
+  seller    Seller   @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  productId String?
+  product   Product? @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  type    IntegrationJobType
+  status  IntegrationJobStatus @default(QUEUED)
+  channel String
+  payload Json
+  result  Json?
+  error   String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sellerId, type, status])
+  @@index([productId, type, status])
+  @@map("integration_jobs")
+}
+
+model EconomicSignal {
+  id       String @id @default(cuid())
+  sellerId String
+  seller   Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  source       String
+  currency     String   @default("IRR")
+  rate         Float?
+  inflationPct Float?
+  capturedAt   DateTime @default(now())
+  note         String?
+
+  createdAt DateTime @default(now())
+
+  @@index([sellerId, capturedAt])
+  @@map("economic_signals")
+}
+
+model UsageEvent {
+  id       String @id @default(cuid())
+  sellerId String
+  seller   Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  type       UsageEventType
+  quantity   Int            @default(1)
+  metadata   Json?
+  occurredAt DateTime       @default(now())
+
+  @@index([sellerId, type, occurredAt])
+  @@map("usage_events")
+}
+
+model Subscription {
+  id       String @id @default(cuid())
+  sellerId String
+  seller   Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+
+  plan                String
+  activeSkuLimit      Int
+  includedApiRequests Int
+  monthlyBasePrice    Float
+  overageUnitPrice    Float
+  startsAt            DateTime  @default(now())
+  endsAt              DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@index([sellerId, startsAt])
+  @@map("subscriptions")
 }

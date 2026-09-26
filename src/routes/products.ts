@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
-import { requireAuth, requireOwnedProduct } from "../lib/auth";
+import { requireAuth, requireOwnedProduct, requireRole } from "../lib/auth";
 import { validate } from "../lib/validate";
 import { createProductSchema, updateProductSchema } from "../lib/schemas";
 
@@ -9,7 +9,7 @@ export const productsRouter = Router();
 productsRouter.use(requireAuth);
 
 // POST /products — ساخت محصول جدید (sellerId از فروشنده احرازشده گرفته می‌شود، نه از body)
-productsRouter.post("/", validate(createProductSchema), async (req, res) => {
+productsRouter.post("/", requireRole("OWNER", "MANAGER"), validate(createProductSchema), async (req, res) => {
   const { sku, name, category, currentPrice } = req.body;
 
   try {
@@ -39,7 +39,7 @@ productsRouter.get("/:id", requireOwnedProduct, async (req, res) => {
 });
 
 // PATCH /products/:id — عمدتاً برای به‌روزرسانی currentPrice
-productsRouter.patch("/:id", requireOwnedProduct, validate(updateProductSchema), async (req, res) => {
+productsRouter.patch("/:id", requireOwnedProduct, requireRole("OWNER", "MANAGER"), validate(updateProductSchema), async (req, res) => {
   const { currentPrice, name, category } = req.body;
 
   const product = await prisma.product.update({

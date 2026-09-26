@@ -1,7 +1,7 @@
 import express, { Router } from "express";
 import { parse as parseCsv } from "csv-parse/sync";
 import { prisma } from "../lib/prisma";
-import { requireAuth } from "../lib/auth";
+import { requireAuth, requireRole } from "../lib/auth";
 import { validate } from "../lib/validate";
 import {
   bulkImportQuerySchema,
@@ -32,6 +32,7 @@ interface RowResult {
 bulkImportRouter.post(
   "/bulk-import",
   validate(bulkImportQuerySchema, "query"),
+  requireRole("OWNER", "MANAGER", "ANALYST"),
   csvTextParser,
   async (req, res) => {
     const type = req.query.type as ImportType;

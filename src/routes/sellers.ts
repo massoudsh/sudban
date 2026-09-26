@@ -1,9 +1,9 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { validate } from "../lib/validate";
-import { createSellerSchema, notificationSettingsSchema } from "../lib/schemas";
+import { createSellerSchema, createTeamMemberSchema, notificationSettingsSchema, subscriptionSchema, updateTeamMemberSchema } from "../lib/schemas";
 import { generateApiKey } from "../lib/apiKey";
-import { requireAuth } from "../lib/auth";
+import { requireAuth, requireRole } from "../lib/auth";
 
 export const sellersRouter = Router();
 
@@ -15,7 +15,7 @@ sellersRouter.post("/", validate(createSellerSchema), async (req, res) => {
 
   try {
     const seller = await prisma.seller.create({
-      data: { name, email, apiKeyPrefix, apiKeyHash },
+      data: { name, email, apiKeyPrefix, apiKeyHash, role: "OWNER" },
     });
 
     res.status(201).json({
@@ -39,6 +39,77 @@ sellersRouter.post("/", validate(createSellerSchema), async (req, res) => {
 sellersRouter.get("/me", requireAuth, async (req, res) => {
   const { apiKeyHash: _apiKeyHash, ...safe } = req.seller!;
   res.json(safe);
+});
+
+sellersRouter.get("/me/team", requireAuth, requireRole("OWNER", "MANAGER"), async (req, res) => {
+  const members = await prisma.sellerTeamMember.findMany({
+    where: { sellerId: req.seller!.id },
+    orderBy: { createdAt: "desc" },
+  });
+  res.json(members);
+});
+
+sellersRouter.post("/me/team", requireAuth, requireRole("OWNER"), validate(createTeamMemberSchema), async (req, res) => {
+  const member = await prisma.sellerTeamMember.create({
+    data: { sellerId: req.seller!.id, email: req.body.email, name: req.body.name ?? null, role: req.body.role },
+  });
+  res.status(201).json(member);
+});
+
+sellersRouter.patch(
+  "/me/team/:memberId",
+  requireAuth,
+  requireRole("OWNER"),
+  validate(updateTeamMemberSchema),
+  async (req, res) => {
+    const existing = await prisma.sellerTeamMember.findFirst({
+      where: { id: req.params.memberId, sellerId: req.seller!.id },
+    });
+    if (!existing) return res.status(404).json({ error: "عضو تیم یافت نشد" });
+
+    const member = await prisma.sellerTeamMember.update({ where: { id: existing.id }, data: req.body });
+    res.json(member);
+  }
+);
+
+sellersRouter.get("/me/subscription", requireAuth, requireRole("OWNER", "MANAGER"), async (req, res) => {
+  const subscription = await prisma.subscription.findFirst({
+    where: { sellerId: req.seller!.id, endsAt: null },
+    orderBy: { startsAt: "desc" },
+  });
+  res.json(subscription);
+});
+
+sellersRouter.put(
+  "/me/subscription",
+  requireAuth,
+  requireRole("OWNER"),
+  validate(subscriptionSchema),
+  async (req, res) => {
+    await prisma.subscription.updateMany({
+      where: { sellerId: req.seller!.id, endsAt: null },
+      data: { endsAt: new Date() },
+    });
+    const subscription = await prisma.subscription.create({
+      data: { sellerId: req.seller!.id, ...req.body },
+    });
+    res.status(201).json(subscription);
+  }
+);
+
+sellersRouter.get("/me/billing/usage", requireAuth, requireRole("OWNER", "MANAGER"), async (req, res) => {
+  const since = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+  const events = await prisma.usageEvent.groupBy({
+    by: ["type"],
+    where: { sellerId: req.seller!.id, occurredAt: { gte: since } },
+    _sum: { quantity: true },
+  });
+  const activeSkuCount = await prisma.product.count({ where: { sellerId: req.seller!.id } });
+  const subscription = await prisma.subscription.findFirst({
+    where: { sellerId: req.seller!.id, endsAt: null },
+    orderBy: { startsAt: "desc" },
+  });
+  res.json({ periodStart: since, activeSkuCount, subscription, usage: events });
 });
 
 // PATCH /sellers/me/notifications — تنظیم کانال‌های دریافت هشدار (#6)

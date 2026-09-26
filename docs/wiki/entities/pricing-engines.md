@@ -13,6 +13,7 @@
 | Risk Alert Engine | `riskAlertEngine.ts` | price + costs + minMarginPct + competitivePosition | `RiskAlertCandidate[]` |
 | Sales Trend (کمکی) | `salesTrend.ts` | لیست `SalesRecord` (quantity+soldAt) | `SalesTrend` (direction UP/DOWN/STABLE/UNKNOWN + changePct) |
 | **Wisdom Engine** | `wisdomEngine.ts` | خروجی پنج مورد بالا (ترکیبی) | `WisdomReport` (`insights[]` اولویت‌بندی‌شده + `topRecommendation`) |
+| **ML Price Engine v2** | `mlPriceEngine.ts` | SalesRecord + costs + strategy + competitivePosition | `MlPriceResult` با model/confidence/estimatedElasticity |
 
 ## وابستگی‌ها
 - [[concepts/pricing-strategy]] — منطق دقیق فرمول‌های کف قیمت، لنگر قیمت هر استراتژی، و کشش قیمتی
@@ -34,6 +35,7 @@
 - `computeSalesTrend` با کمتر از ۴ رکورد فروش `UNKNOWN` برمی‌گرداند (روند غیرقابل‌اتکا)؛ اگر میانگین
   نیمه قبلی صفر باشد `changePct = null` و جهت `STABLE` می‌ماند.
 - `generateWisdom` نتیجه را persist نمی‌کند (بر خلاف `/suggestion`)؛ جزئیات کامل: [[concepts/wisdom-engine]].
+- `suggestMlPrice` اگر کمتر از ۳ تغییر قیمت معتبر برای تخمین کشش داشته باشد، خروجی `RULE_BASED_FALLBACK` با confidence پایین می‌دهد.
 
 ## تست‌های واحد (#1)
 هر هفت موتور تست Vitest دارند (`npm test`) — کنار هر سرویس یک `*.test.ts`:
@@ -47,6 +49,7 @@
 - `salesTrend.test.ts` — مرز ۴ رکورد، نیمه‌سازی زوج/فرد، آستانه دقیق ۱۰٪، تقسیم بر صفر.
 - `wisdomEngine.test.ts` — نگاشت شدت هشدار به اولویت، آستانه‌های ۵٪/۱۵٪ اختلاف قیمت، مرزهای حاشیه سود،
   بازه percentile ۳۵..۶۵، مرتب‌سازی اولویت و توصیه محوری.
+- `mlPriceEngine.test.ts` — fallback کم‌داده، تخمین کشش منفی، رعایت کف/سقف پیشنهاد v2.
 
 ## منابع کد
 - `src/services/marginCalculator.ts:8,21,35`
@@ -56,3 +59,4 @@
 - `src/services/riskAlertEngine.ts:15`
 - `src/services/salesTrend.ts:11`
 - `src/services/wisdomEngine.ts:29`
+- `src/services/mlPriceEngine.ts:23`

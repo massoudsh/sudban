@@ -1,6 +1,22 @@
 # بک‌لاگ Issue
 
-> همه ۱۳ مورد این فایل به‌صورت GitHub Issue واقعی روی [massoudsh/sudban](https://github.com/massoudsh/sudban/issues) ساخته شده‌اند (Issue #1 تا #13، به همان ترتیب زیر). این فایل همچنان به‌عنوان مرجع خلاصه/آفلاین نگه داشته می‌شود.
+> همه ۱۳ مورد این فایل به‌صورت GitHub Issue واقعی روی [massoudsh/sudban](https://github.com/massoudsh/sudban/issues) ساخته شده‌اند (Issue #1 تا #13، به همان ترتیب زیر). Issueهای #1 تا #6 در MVP پایه حل شده‌اند و issueهای #7 تا #13 در قالب MVPهای API-محور امن پیاده‌سازی شده‌اند.
+
+## وضعیت حل‌شده
+
+- #1 — تست واحد موتورهای قیمت‌گذاری: Vitest و پوشش edge case موتورهای اصلی
+- #2 — اعتبارسنجی ساخت‌یافته: zod schema برای body/query routeها
+- #3 — احراز هویت و مجوز سطح فروشنده: API key per-seller، مالکیت محصول و RBAC
+- #4 — import دسته‌ای CSV/JSON: endpoint bulk import با گزارش خطای ردیفی
+- #5 — محافظت API: helmet، CORS allowlist، rate limit و timeout/body limit
+- #6 — اعلان بیرون از API: کانال‌های تلگرام/ایمیل/پیامک best-effort
+- #7 — ML pricing v2: مدل کشش قیمت با fallback rule-based
+- #8 — sync قیمت رقبا: صف integration job برای منابع رقبا
+- #9 — auto price-push: job کنترل‌شده با acknowledgement صریح ریسک
+- #10 — سیگنال نرخ ارز/تورم: ثبت سیگنال و پیشنهاد تعدیل CostProfile
+- #11 — داشبورد وب: HTML/JSON dashboard برای Wisdom Engine
+- #12 — چندمستأجری سازمانی: نقش‌های OWNER/MANAGER/ANALYST/VIEWER و team member API
+- #13 — billing usage-based: subscription، usage events و خلاصه مصرف ماهانه
 
 ## نزدیک‌مدت (Near-term — توسعه بعدی مستقیم روی MVP فعلی)
 

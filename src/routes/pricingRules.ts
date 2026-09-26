@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
-import { requireAuth, requireOwnedProduct } from "../lib/auth";
+import { requireAuth, requireOwnedProduct, requireRole } from "../lib/auth";
 import { validate } from "../lib/validate";
 import { pricingRuleSchema } from "../lib/schemas";
 
@@ -12,6 +12,7 @@ pricingRulesRouter.use(requireAuth);
 pricingRulesRouter.put(
   "/:id/pricing-rule",
   requireOwnedProduct,
+  requireRole("OWNER", "MANAGER", "ANALYST"),
   validate(pricingRuleSchema),
   async (req, res) => {
     const productId = req.params.id;

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
-import { requireAuth, requireOwnedProduct } from "../lib/auth";
+import { requireAuth, requireOwnedProduct, requireRole } from "../lib/auth";
 import { validate } from "../lib/validate";
 import { createCostProfileSchema } from "../lib/schemas";
 
@@ -12,6 +12,7 @@ costsRouter.use(requireAuth);
 costsRouter.post(
   "/:id/costs",
   requireOwnedProduct,
+  requireRole("OWNER", "MANAGER"),
   validate(createCostProfileSchema),
   async (req, res) => {
     const productId = req.params.id;

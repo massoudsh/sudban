@@ -11,6 +11,10 @@ import { competitorsRouter } from "./routes/competitors";
 import { salesRouter } from "./routes/sales";
 import { pricingRouter } from "./routes/pricing";
 import { bulkImportRouter } from "./routes/bulkImport";
+import { integrationsRouter } from "./routes/integrations";
+import { economicSignalsRouter } from "./routes/economicSignals";
+import { dashboardRouter } from "./routes/dashboard";
+import { billingRouter } from "./routes/billing";
 
 /** خواندن مقدار عددی از env؛ مقدار خالی/نامعتبر/غیرمثبت نادیده گرفته می‌شود و fallback برمی‌گردد. */
 function envInt(name: string, fallback: number): number {
@@ -55,7 +59,12 @@ app.use(globalLimiter);
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "1mb" }));
 
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "sudban" }));
+app.use(express.static("public"));
 
+app.use(billingRouter);
+app.use(economicSignalsRouter);
+app.use(dashboardRouter);
+app.use("/products", integrationsRouter);
 app.use("/sellers", sellersRouter);
 app.use("/products", productsRouter);
 // این روترها همگی زیر پیشوند /products هستند و مسیر خودشان را با /:id/... تعریف می‌کنند
