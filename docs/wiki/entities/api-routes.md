@@ -50,6 +50,7 @@
 - `GET /:id/ml-suggestion` با داده فروش تاریخی مدل کشش قیمت را اجرا می‌کند، خروجی را در `PriceSuggestion` و مصرف را در `UsageEvent` ذخیره می‌کند.
 - routeهای integration فقط job ثبت/به‌روزرسانی می‌کنند؛ اتصال واقعی marketplace یا worker بیرون از request path است.
 - `public/dashboard.html` فایل استاتیک است؛ داده‌های dashboard فقط با `GET /dashboard/wisdom` و API key برمی‌گردد.
+- UI داشبورد RTL با glassmorphism، KPIهای زنده، فیلتر محصول، loading skeleton، empty/error state و logout ساخته شده و برای کاهش ریسک XSS، مقدارهای API را با `textContent` در DOM قرار می‌دهد.
 
 ## منابع کد
 - `src/server.ts:15-111` — نمونه‌سازی اپ، زنجیره میان‌افزار، mount روترها، هندلر خطا، تایم‌اوت‌ها
