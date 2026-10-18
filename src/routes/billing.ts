@@ -1,29 +1,16 @@
 import { Router } from "express";
-import { prisma } from "../lib/prisma";
 import { requireAuth, requireRole } from "../lib/auth";
-import { validate } from "../lib/validate";
-import { usageEventSchema } from "../lib/schemas";
+import { BILLING_PLANS, estimateBill } from "../services/billingPlans";
+import { prisma } from "../lib/prisma";
 
 export const billingRouter = Router();
-
 billingRouter.use(requireAuth);
-
-billingRouter.post("/billing/usage-events", requireRole("OWNER", "MANAGER"), validate(usageEventSchema), async (req, res) => {
-  const event = await prisma.usageEvent.create({
-    data: {
-      sellerId: req.seller!.id,
-      type: req.body.type,
-      quantity: req.body.quantity,
-      metadata: req.body.metadata ?? undefined,
-    },
-  });
-  res.status(201).json(event);
-});
-
-billingRouter.get("/billing/plans", (_req, res) => {
-  res.json([
-    { plan: "starter", activeSkuLimit: 100, includedApiRequests: 10000, monthlyBasePrice: 0, overageUnitPrice: 0.0005 },
-    { plan: "growth", activeSkuLimit: 1000, includedApiRequests: 100000, monthlyBasePrice: 49, overageUnitPrice: 0.0002 },
-    { plan: "scale", activeSkuLimit: 10000, includedApiRequests: 1000000, monthlyBasePrice: 199, overageUnitPrice: 0.0001 },
-  ]);
+billingRouter.get("/plans", (_req, res) => res.json({ currency: "IRR", paymentConfigured: false, plans: BILLING_PLANS }));
+billingRouter.get("/estimate", requireRole("OWNER", "MANAGER"), async (req, res) => {
+  const now = new Date();
+  const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  const events = await prisma.usageEvent.aggregate({ where: { sellerId: req.seller!.id, type: "API_REQUEST", occurredAt: { gte: start } }, _sum: { quantity: true } });
+  const subscription = await prisma.subscription.findFirst({ where: { sellerId: req.seller!.id, endsAt: null }, orderBy: { startsAt: "desc" } });
+  const plan = subscription?.plan && subscription.plan in BILLING_PLANS ? subscription.plan as keyof typeof BILLING_PLANS : "starter";
+  res.json({ plan, requests: events._sum.quantity ?? 0, ...estimateBill(plan, events._sum.quantity ?? 0) });
 });

@@ -1,7 +1,7 @@
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth } from "../lib/auth";
-import { loadProductPricingContext } from "../lib/productContext";
+import { loadProductPricingContext, NotFoundError } from "../lib/productContext";
 import { suggestPrice } from "../services/priceSuggestionEngine";
 import { checkRisks } from "../services/riskAlertEngine";
 import { computeSalesTrend } from "../services/salesTrend";
@@ -11,7 +11,7 @@ export const dashboardRouter = Router();
 
 dashboardRouter.use(requireAuth);
 
-dashboardRouter.get("/dashboard/wisdom", async (req, res) => {
+dashboardRouter.get("/wisdom", async (req, res) => {
   const products = await prisma.product.findMany({
     where: { sellerId: req.seller!.id },
     orderBy: { updatedAt: "desc" },
@@ -20,7 +20,7 @@ dashboardRouter.get("/dashboard/wisdom", async (req, res) => {
 
   const cards = [];
   for (const product of products) {
-    if (!product.currentPrice) continue;
+    if (!product.currentPrice) { cards.push({ product, setupRequired: true }); continue; }
     try {
       const { costs, pricingRule, competitivePosition } = await loadProductPricingContext(product.id);
       const suggestion = suggestPrice({
@@ -49,7 +49,8 @@ dashboardRouter.get("/dashboard/wisdom", async (req, res) => {
         salesTrend,
       });
       cards.push({ product, suggestion, risks, salesTrend, wisdom });
-    } catch {
+    } catch (error) {
+      if (!(error instanceof NotFoundError)) throw error;
       cards.push({ product, setupRequired: true });
     }
   }

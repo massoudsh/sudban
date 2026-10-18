@@ -1,4 +1,5 @@
 import "dotenv/config";
+import "express-async-errors";
 import express, { NextFunction, Request, Response } from "express";
 import helmet from "helmet";
 import cors from "cors";
@@ -10,6 +11,9 @@ import { pricingRulesRouter } from "./routes/pricingRules";
 import { competitorsRouter } from "./routes/competitors";
 import { salesRouter } from "./routes/sales";
 import { pricingRouter } from "./routes/pricing";
+import { accountsRouter } from "./routes/accounts";
+import { merchantRouter } from "./routes/merchant";
+import { importsRouter } from "./routes/imports";
 import { bulkImportRouter } from "./routes/bulkImport";
 import { integrationsRouter } from "./routes/integrations";
 import { economicSignalsRouter } from "./routes/economicSignals";
@@ -22,7 +26,7 @@ function envInt(name: string, fallback: number): number {
   return Number.isFinite(value) && value > 0 ? value : fallback;
 }
 
-const app = express();
+export const app = express();
 
 app.set("trust proxy", 1);
 app.use(helmet());
@@ -58,13 +62,17 @@ app.use(globalLimiter);
 // محدودیت اندازه بدنه (پیش‌فرض ۱ مگابایت)؛ بدنه بزرگ‌تر از حد، پیش از رسیدن به route با ۴۱۳ رد می‌شود
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || "1mb" }));
 
+app.get("/", (_req, res) => res.redirect("/dashboard.html"));
 app.get("/health", (_req, res) => res.json({ status: "ok", service: "sudban" }));
 app.use(express.static("public"));
 
-app.use(billingRouter);
-app.use(economicSignalsRouter);
-app.use(dashboardRouter);
-app.use("/products", integrationsRouter);
+app.use("/accounts", accountsRouter);
+app.use("/merchant", merchantRouter);
+app.use("/imports", importsRouter);
+app.use("/billing", billingRouter);
+app.use("/economic", economicSignalsRouter);
+app.use("/dashboard", dashboardRouter);
+app.use("/integrations", integrationsRouter);
 app.use("/sellers", sellersRouter);
 app.use("/products", productsRouter);
 // این روترها همگی زیر پیشوند /products هستند و مسیر خودشان را با /:id/... تعریف می‌کنند
@@ -96,7 +104,7 @@ function clientErrorStatus(err: unknown): number | null {
 
 // هندلر خطای مرکزی
 app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
-  console.error(err);
+  console.error("Request failed", err instanceof Error ? err.name : "UnknownError");
 
   const status = clientErrorStatus(err);
   if (status !== null) {
@@ -107,6 +115,7 @@ app.use((err: unknown, _req: Request, res: Response, _next: NextFunction) => {
   res.status(500).json({ error: "خطای داخلی سرور" });
 });
 
+if (require.main === module) {
 const port = Number(process.env.PORT) || 3000;
 const server = app.listen(port, () => {
   console.log(`سودبان API روی پورت ${port} در حال اجراست`);
@@ -118,3 +127,4 @@ const server = app.listen(port, () => {
 server.requestTimeout = envInt("REQUEST_TIMEOUT_MS", 120_000);
 server.headersTimeout = envInt("HEADERS_TIMEOUT_MS", 15_000);
 server.keepAliveTimeout = envInt("KEEP_ALIVE_TIMEOUT_MS", 5_000);
+}

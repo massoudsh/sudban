@@ -75,6 +75,10 @@ model Seller {
   notifyPhone    String?
 
   role SellerRole @default(OWNER)
+  passwordHash String?
+  sessions SellerSession[]
+  approvals PriceApproval[]
+  lastDigestAt DateTime?
 
   products        Product[]
   teamMembers     SellerTeamMember[]
@@ -106,6 +110,7 @@ model Product {
   suggestions      PriceSuggestion[]
   alerts           Alert[]
   integrationJobs  IntegrationJob[]
+  approvals PriceApproval[]
 
   @@unique([sellerId, sku])
   @@index([sellerId])
@@ -162,6 +167,8 @@ model CompetitorPrice {
   price          Float
   currency       String   @default("IRR")
   capturedAt     DateTime @default(now())
+  inStock Boolean @default(true)
+  matchConfidence Float @default(1)
 
   @@index([productId, capturedAt])
   @@map("competitor_prices")
@@ -176,6 +183,12 @@ model SalesRecord {
   quantity Int
   channel  String?
   soldAt   DateTime
+  unitCostSnapshot Float?
+  commissionAmount Float @default(0)
+  shippingSubsidy Float @default(0)
+  discountAmount Float @default(0)
+  returnCost Float @default(0)
+  settlementDeduction Float @default(0)
 
   createdAt DateTime @default(now())
 
@@ -226,6 +239,8 @@ model SellerTeamMember {
   name     String?
   role     SellerRole @default(VIEWER)
   isActive Boolean    @default(true)
+  apiKeyPrefix String? @unique
+  apiKeyHash String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -306,4 +321,35 @@ model Subscription {
 
   @@index([sellerId, startsAt])
   @@map("subscriptions")
+}
+
+model SellerSession {
+  id String @id @default(cuid())
+  sellerId String
+  seller Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  tokenHash String @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  @@index([sellerId, expiresAt])
+  @@map("seller_sessions")
+}
+
+model PriceApproval {
+  id String @id @default(cuid())
+  sellerId String
+  seller Seller @relation(fields: [sellerId], references: [id], onDelete: Cascade)
+  productId String
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  previousPrice Float
+  proposedPrice Float
+  expectedMarginPct Float
+  reason String
+  status String @default("RECOMMENDED")
+  approvedBy String?
+  appliedAt DateTime?
+  rolledBackAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([sellerId, status, createdAt])
+  @@map("price_approvals")
 }

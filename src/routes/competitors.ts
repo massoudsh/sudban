@@ -18,8 +18,9 @@ competitorsRouter.post(
     const productId = req.params.id;
     const { competitorName, channel, price, currency, capturedAt } = req.body;
 
+    if (req.body.capturedAt && req.body.capturedAt > new Date()) return res.status(400).json({ error: "زمان قیمت نمی‌تواند در آینده باشد" });
     const competitorPrice = await prisma.competitorPrice.create({
-      data: { productId, competitorName, channel, price, currency, capturedAt },
+      data: { productId, competitorName, channel, price, currency, capturedAt, inStock: req.body.inStock, matchConfidence: req.body.matchConfidence },
     });
 
     res.status(201).json(competitorPrice);

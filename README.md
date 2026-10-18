@@ -16,7 +16,9 @@
 ```bash
 npm install
 cp .env.example .env   # و DATABASE_URL را تنظیم کن (کانال‌های هشدار/CORS/rate-limit اختیاری‌اند)
-npx prisma migrate dev --name init
+npx prisma generate
+# پایگاه موجودِ دارای baseline معتبر:
+npx prisma migrate deploy
 npm run dev             # اجرای dev با هات‌ریلود
 npm test                 # اجرای تست‌های واحد موتورهای قیمت‌گذاری (Vitest)
 # یا برای production:
@@ -79,14 +81,49 @@ Authorization: Bearer sk_live_...
 | PUT/GET | `/sellers/me/subscription` | بله | تنظیم و دریافت اشتراک فعال |
 | GET | `/sellers/me/billing/usage` | بله | خلاصه مصرف ماهانه و SKU فعال |
 | GET | `/billing/plans` | بله | پلن‌های نمونه billing |
-| POST | `/billing/usage-events` | بله | ثبت رخداد مصرف |
-| POST/GET | `/economic-signals` | بله | ثبت/دریافت سیگنال نرخ ارز یا تورم |
-| GET | `/products/:id/cost-adjustment-proposal` | بله | پیشنهاد تعدیل CostProfile بر اساس آخرین سیگنال اقتصادی |
-| POST | `/products/:id/competitor-sync-jobs` | بله | ساخت job برای sync قیمت رقبا |
-| POST | `/products/:id/price-push-jobs` | بله | ساخت job کنترل‌شده برای push قیمت |
-| GET/PATCH | `/products/integration-jobs` و `/products/integration-jobs/:jobId` | بله | مشاهده/به‌روزرسانی jobهای integration |
+| GET | `/billing/estimate` | بله | برآورد ماه جاری با تعرفه کنترل‌شده سرور |
+| POST/GET | `/economic/economic-signals` | بله | ثبت/دریافت سیگنال نرخ ارز یا تورم |
+| GET | `/economic/products/:id/cost-adjustment-proposal` | بله | پیشنهاد تعدیل CostProfile |
+| POST | `/integrations/:id/competitor-sync-jobs` | بله | صف درخواست sync؛ بدون آداپتور اجرایی |
+| POST | `/integrations/:id/price-push-jobs` | بله | صف درخواست قیمت با کنترل کف هزینه |
+| GET/PATCH | `/integrations/integration-jobs` و `/integrations/integration-jobs/:jobId` | بله | مشاهده؛ فقط لغو job در صف مجاز است |
 
-*خود فایل HTML عمومی serve می‌شود، اما داده‌های dashboard بدون API key برنمی‌گردد.
+*خود فایل HTML عمومی است؛ داده‌های خصوصی به کلید API یا نشست معتبر نیاز دارند.
+
+## گردش‌کارهای فروشنده
+
+| متد | مسیر | کاربرد |
+|---|---|---|
+| POST | `/accounts/register` و `/accounts/login` | ثبت‌نام/ورود ایمیل و رمز حداقل ۱۲ کاراکتری؛ نشست ۸ ساعته |
+| POST | `/accounts/logout` | ابطال نشست؛ توکن داشبورد فقط در حافظه نگهداری می‌شود |
+| POST | `/merchant/onboarding` | ساخت اتمیک محصول، هزینه و قاعده |
+| GET | `/merchant/products` و `/merchant/products/:id/detail` | فهرست و جزئیات محصول با تاریخچه |
+| GET | `/merchant/profit` | سود SKU/کانال برای حداکثر ۱۰۰۰۰ رکورد آخر؛ داده ناقص جدا گزارش می‌شود |
+| GET | `/merchant/approvals` | فهرست درخواست‌های قیمت |
+| POST | `/merchant/products/:id/approvals` | پیشنهاد قیمت با دلیل و کنترل کف هزینه |
+| POST | `/merchant/approvals/:approvalId/:action` | `approve`، `reject`، `apply` یا `rollback` |
+| GET | `/merchant/products/:id/replacement` | برآورد هزینه جایگزینی با نرخ هم‌منبع از زمان هزینه |
+| POST | `/imports/file` | CSV/XLSX خام، حداکثر ۱ مگابایت و ۵۰۰ ردیف |
+| POST | `/imports/catalog` | نگاشت ستون‌ها، `unit: IRR/IRT` و پیش‌نمایش؛ `commit:true` ورود اتمیک |
+| POST | `/merchant/woocommerce/catalog` | همگام‌سازی یک‌طرفه حداکثر ۱۰۰ محصول در هر درخواست |
+
+فروش: `unitCostSnapshot` هزینه واحد در زمان فروش است؛ `commissionAmount`، `shippingSubsidy`، `discountAmount`، `returnCost` و `settlementDeduction` مبالغ کل همان تراکنش‌اند و یک‌بار کم می‌شوند. بدون snapshot، سود نامعلوم می‌ماند؛ زیان واقعی حذف نمی‌شود. قیمت‌ها در دیتابیس ریال‌اند؛ ورودی تومان یک‌بار ×۱۰ می‌شود.
+
+رقبا: فقط قیمت ریالی موجود، با `matchConfidence >= 0.9` و ثبت‌شده طی ۲۴ ساعت گذشته وارد محاسبه می‌شود. قیمت پیشنهادی و برگشت قیمت داخل تراکنش با هزینه زنده و قیمت موردانتظار کنترل می‌شوند. **اعمال/برگشت فقط کاتالوگ محلی را تغییر می‌دهد، نه مارکت‌پلیس.** اعضای تیم کلید مستقل و قابل غیرفعال‌سازی دارند؛ هش‌ها در پاسخ پروفایل/تیم نیستند.
+
+### WooCommerce و خلاصه روزانه
+
+پوشه `integrations/woocommerce` را به پوشه افزونه‌های WordPress منتقل و افزونه را فعال کنید. در زیرمنوی WooCommerce، مدیر مجاز آدرس HTTPS سرویس، کلید API، واحد پول و صفحه را وارد می‌کند؛ کلید در تنظیمات افزونه ذخیره نمی‌شود. هر اجرا دستی و حداکثر ۱۰۰ محصول منتشرشده است؛ هزینه یا تغییر قیمت فروشگاه خارجی ارسال نمی‌شود.
+
+پس از کامپایل روی سرور، `npm run digest` پیش‌نمایش بدون ارسال و `npm run digest -- --send` ارسال به کانال تنظیم‌شده است. زمان‌بندی باید روی سرور و بدون اجرای هم‌زمان worker تنظیم شود؛ زمان موفقیت فقط پس از ارسال موفق همه کانال‌های انتخاب‌شده ذخیره می‌شود. بدون پیکربندی ارائه‌دهنده هیچ ارسالی انجام نمی‌شود.
+
+### استقرار و محدودیت‌های تأییدشده
+
+- migration جدید: `prisma/migrations/20261018000000_merchant_workflows/migration.sql`. تاریخچه migration فاقد baseline اولیه جداول پایه است؛ نصب تازه نیازمند baseline بازبینی‌شده پیش از `migrate deploy` است. روی دیتابیس موجود ابتدا backup و staging لازم است.
+- پرداخت واقعی متصل نیست؛ فعال‌سازی پلن پولی تا تأیید پرداخت رد می‌شود. تعرفه و سهمیه را کاربر تعیین نمی‌کند؛ برآورد صورتحساب به‌معنای برداشت وجه یا اجرای سهمیه نیست.
+- آداپتور اجرای sync رقبا/قیمت خارجی هنوز متصل نیست؛ job صرفاً صف درخواست است و نمی‌توان موفقیت جعلی ثبت کرد.
+- ۱۳۶ تست واحد/HTTP/DOM بدون مرورگر، typecheck و بررسی نحوی JavaScript اجرا شده‌اند. دیتابیس واقعی، ارسال اعلان، WordPress و بررسی بصری مرورگری آزمایش نشده‌اند؛ PHP در محیط موجود نیست.
+- `npm audit --omit=dev` بدون آسیب‌پذیری است؛ ابزار توسعه `ts-node-dev` همچنان advisory وابستگی غیرمستقیم دارد. برای production از بسته‌های توسعه استفاده نکنید.
 
 ## نمونه جریان کامل
 

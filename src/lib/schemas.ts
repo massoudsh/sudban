@@ -53,6 +53,8 @@ export const competitorPriceSchema = z.object({
   price: z.number().positive("price باید مثبت باشد"),
   currency: z.string().trim().min(1).default("IRR"),
   capturedAt: z.coerce.date().optional(),
+  inStock: z.boolean().default(true),
+  matchConfidence: z.number().min(0).max(1).default(1),
 });
 
 export const salesRecordSchema = z.object({
@@ -60,6 +62,12 @@ export const salesRecordSchema = z.object({
   quantity: z.number().int().positive("quantity باید عدد صحیح مثبت باشد"),
   channel: z.string().trim().min(1).optional().nullable(),
   soldAt: z.coerce.date().optional(),
+  unitCostSnapshot: z.number().nonnegative().optional(),
+  commissionAmount: z.number().nonnegative().default(0),
+  shippingSubsidy: z.number().nonnegative().default(0),
+  discountAmount: z.number().nonnegative().default(0),
+  returnCost: z.number().nonnegative().default(0),
+  settlementDeduction: z.number().nonnegative().default(0),
 });
 
 export const simulateScenarioSchema = z.object({
@@ -190,10 +198,5 @@ export const usageEventSchema = z.object({
 });
 
 export const subscriptionSchema = z.object({
-  plan: z.string().trim().min(1),
-  activeSkuLimit: z.number().int().positive(),
-  includedApiRequests: z.number().int().nonnegative(),
-  monthlyBasePrice: z.number().nonnegative(),
-  overageUnitPrice: z.number().nonnegative(),
-  endsAt: z.coerce.date().optional().nullable(),
-});
+  plan: z.enum(["starter", "growth", "scale"]),
+}).strict();

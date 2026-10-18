@@ -20,6 +20,12 @@ salesRouter.post("/:id/sales", requireOwnedProduct, requireRole("OWNER", "MANAGE
       quantity,
       channel: channel ?? null,
       soldAt: soldAt ?? new Date(),
+      unitCostSnapshot: req.body.unitCostSnapshot ?? null,
+      commissionAmount: req.body.commissionAmount,
+      shippingSubsidy: req.body.shippingSubsidy,
+      discountAmount: req.body.discountAmount,
+      returnCost: req.body.returnCost,
+      settlementDeduction: req.body.settlementDeduction,
     },
   });
 

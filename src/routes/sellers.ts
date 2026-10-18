@@ -1,3 +1,4 @@
+import { BILLING_PLANS } from "../services/billingPlans";
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { validate } from "../lib/validate";
@@ -37,23 +38,24 @@ sellersRouter.post("/", validate(createSellerSchema), async (req, res) => {
 
 // GET /sellers/me — اطلاعات فروشنده احرازشده
 sellersRouter.get("/me", requireAuth, async (req, res) => {
-  const { apiKeyHash: _apiKeyHash, ...safe } = req.seller!;
-  res.json(safe);
+  res.json({ id: req.seller!.id, name: req.seller!.name, email: req.seller!.email, role: req.actorRole ?? req.seller!.role });
 });
 
 sellersRouter.get("/me/team", requireAuth, requireRole("OWNER", "MANAGER"), async (req, res) => {
   const members = await prisma.sellerTeamMember.findMany({
     where: { sellerId: req.seller!.id },
+    select: { id: true, email: true, name: true, role: true, isActive: true, createdAt: true },
     orderBy: { createdAt: "desc" },
   });
   res.json(members);
 });
 
 sellersRouter.post("/me/team", requireAuth, requireRole("OWNER"), validate(createTeamMemberSchema), async (req, res) => {
+  const { apiKey, apiKeyPrefix, apiKeyHash } = await generateApiKey();
   const member = await prisma.sellerTeamMember.create({
-    data: { sellerId: req.seller!.id, email: req.body.email, name: req.body.name ?? null, role: req.body.role },
+    data: { sellerId: req.seller!.id, email: req.body.email, name: req.body.name ?? null, role: req.body.role, apiKeyPrefix, apiKeyHash },
   });
-  res.status(201).json(member);
+  res.status(201).json({ id: member.id, email: member.email, role: member.role, apiKey });
 });
 
 sellersRouter.patch(
@@ -68,7 +70,7 @@ sellersRouter.patch(
     if (!existing) return res.status(404).json({ error: "عضو تیم یافت نشد" });
 
     const member = await prisma.sellerTeamMember.update({ where: { id: existing.id }, data: req.body });
-    res.json(member);
+    res.json({ id: member.id, email: member.email, name: member.name, role: member.role, isActive: member.isActive });
   }
 );
 
@@ -86,12 +88,12 @@ sellersRouter.put(
   requireRole("OWNER"),
   validate(subscriptionSchema),
   async (req, res) => {
-    await prisma.subscription.updateMany({
-      where: { sellerId: req.seller!.id, endsAt: null },
-      data: { endsAt: new Date() },
-    });
-    const subscription = await prisma.subscription.create({
-      data: { sellerId: req.seller!.id, ...req.body },
+    if (req.body.plan !== "starter") {
+      return res.status(409).json({ error: "فعال‌سازی پلن پولی نیازمند پرداخت تأییدشده است", paymentConfigured: false });
+    }
+    const subscription = await prisma.$transaction(async (tx) => {
+      await tx.subscription.updateMany({ where: { sellerId: req.seller!.id, endsAt: null }, data: { endsAt: new Date() } });
+      return tx.subscription.create({ data: { sellerId: req.seller!.id, plan: "starter", ...BILLING_PLANS.starter } });
     });
     res.status(201).json(subscription);
   }
@@ -116,14 +118,14 @@ sellersRouter.get("/me/billing/usage", requireAuth, requireRole("OWNER", "MANAGE
 sellersRouter.patch(
   "/me/notifications",
   requireAuth,
+  requireRole("OWNER", "MANAGER"),
   validate(notificationSettingsSchema),
   async (req, res) => {
     const seller = await prisma.seller.update({
       where: { id: req.seller!.id },
       data: req.body,
     });
-    const { apiKeyHash: _apiKeyHash, ...safe } = seller;
-    res.json(safe);
+    res.json({ telegramChatId: seller.telegramChatId, notifyEmail: seller.notifyEmail, notifyPhone: seller.notifyPhone });
   }
 );
 

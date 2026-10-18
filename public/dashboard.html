@@ -5,141 +5,25 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#eef2ff" />
     <title>سودبان | داشبورد هوشمند</title>
-    <style>
-      :root {
-        color-scheme: light;
-        --bg: #edf2ff;
-        --bg-deep: #dbe6ff;
-        --ink: #172033;
-        --muted: #768096;
-        --line: rgba(255, 255, 255, .72);
-        --glass: rgba(255, 255, 255, .62);
-        --glass-strong: rgba(255, 255, 255, .8);
-        --shadow: 0 24px 70px rgba(75, 89, 140, .16);
-        --shadow-soft: 0 10px 30px rgba(75, 89, 140, .1);
-        --blue: #376cf6;
-        --blue-soft: #e6edff;
-        --green: #159b73;
-        --green-soft: #dff8ef;
-        --amber: #c78319;
-        --amber-soft: #fff2cf;
-        --red: #dc4b67;
-        --red-soft: #ffe3ea;
-        --radius-xl: 32px;
-        --radius-lg: 22px;
-        --radius-md: 16px;
-      }
-
-      * { box-sizing: border-box; }
-      html { min-height: 100%; }
-      body {
-        min-height: 100vh;
-        margin: 0;
-        color: var(--ink);
-        background:
-          radial-gradient(circle at 90% 4%, rgba(157, 182, 255, .62), transparent 30%),
-          radial-gradient(circle at 5% 88%, rgba(195, 174, 255, .46), transparent 28%),
-          linear-gradient(135deg, var(--bg), var(--bg-deep));
-        font-family: ui-rounded, "SF Pro Display", "Segoe UI", Tahoma, sans-serif;
-        -webkit-font-smoothing: antialiased;
-      }
-
-      button, input { font: inherit; }
-      button { border: 0; cursor: pointer; }
-      button:focus-visible, input:focus-visible { outline: 3px solid rgba(55, 108, 246, .35); outline-offset: 3px; }
-      .app-shell { display: grid; grid-template-columns: 248px minmax(0, 1fr); min-height: 100vh; padding: 20px; gap: 20px; }
-      .glass { background: var(--glass); border: 1px solid var(--line); box-shadow: var(--shadow-soft); backdrop-filter: blur(28px) saturate(150%); -webkit-backdrop-filter: blur(28px) saturate(150%); }
-      .sidebar { display: flex; flex-direction: column; gap: 28px; min-height: calc(100vh - 40px); padding: 24px 16px; border-radius: var(--radius-xl); }
-      .brand { display: flex; align-items: center; gap: 12px; padding: 0 10px; }
-      .brand-mark { display: grid; place-items: center; width: 42px; height: 42px; border-radius: 14px; color: white; font-size: 21px; font-weight: 800; background: linear-gradient(145deg, #6591ff, #315bdd); box-shadow: 0 9px 20px rgba(55, 108, 246, .3); }
-      .brand h1 { margin: 0; font-size: 18px; letter-spacing: -.4px; }
-      .brand small { display: block; margin-top: 2px; color: var(--muted); font-size: 11px; }
-      .nav { display: grid; gap: 7px; }
-      .nav button { display: flex; align-items: center; gap: 12px; width: 100%; padding: 12px 14px; color: var(--muted); text-align: right; background: transparent; border-radius: 14px; transition: .2s ease; }
-      .nav button:hover { color: var(--ink); background: rgba(255,255,255,.5); }
-      .nav button.active { color: var(--blue); font-weight: 700; background: rgba(255,255,255,.72); box-shadow: 0 8px 20px rgba(55,108,246,.08); }
-      .nav-icon { display: grid; place-items: center; width: 24px; font-size: 17px; }
-      .sidebar-footer { margin-top: auto; padding: 16px; border-radius: 20px; background: linear-gradient(145deg, rgba(55,108,246,.94), rgba(118,86,220,.9)); color: white; box-shadow: 0 14px 32px rgba(74, 88, 190, .24); }
-      .sidebar-footer p { margin: 0 0 12px; font-size: 13px; line-height: 1.8; opacity: .9; }
-      .sidebar-footer button { width: 100%; padding: 10px; color: var(--blue); border-radius: 12px; background: white; font-weight: 700; }
-      .main { min-width: 0; padding: 8px 8px 28px; }
-      .topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 0 0 22px; }
-      .eyebrow { margin: 0 0 7px; color: var(--blue); font-size: 12px; font-weight: 800; letter-spacing: .2px; }
-      .topbar h2 { margin: 0; font-size: clamp(24px, 3vw, 34px); letter-spacing: -1.2px; }
-      .topbar p { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
-      .top-actions { display: flex; align-items: center; gap: 10px; }
-      .icon-button { display: grid; place-items: center; width: 42px; height: 42px; color: var(--ink); border: 1px solid rgba(255,255,255,.8); border-radius: 50%; background: var(--glass-strong); box-shadow: var(--shadow-soft); }
-      .avatar { display: grid; place-items: center; width: 42px; height: 42px; color: white; border-radius: 50%; background: linear-gradient(145deg, #f3a76f, #d9608e); font-weight: 800; }
-      .hero { position: relative; overflow: hidden; display: flex; align-items: center; justify-content: space-between; gap: 26px; min-height: 190px; padding: 28px 32px; margin-bottom: 20px; border-radius: var(--radius-xl); background: linear-gradient(120deg, rgba(255,255,255,.73), rgba(227,235,255,.62)); box-shadow: var(--shadow); }
-      .hero::after { content: ""; position: absolute; left: -40px; bottom: -90px; width: 260px; height: 220px; border-radius: 50%; background: rgba(140, 113, 255, .12); filter: blur(8px); }
-      .hero-copy { position: relative; z-index: 1; max-width: 610px; }
-      .hero h3 { margin: 0 0 10px; font-size: clamp(22px, 3vw, 30px); letter-spacing: -1px; }
-      .hero p { max-width: 540px; margin: 0; color: var(--muted); line-height: 1.9; font-size: 14px; }
-      .hero-orb { position: relative; z-index: 1; flex: 0 0 auto; display: grid; place-items: center; width: 124px; height: 124px; border: 1px solid rgba(255,255,255,.9); border-radius: 42% 58% 52% 48%; background: linear-gradient(145deg, rgba(255,255,255,.82), rgba(196,211,255,.72)); box-shadow: inset 8px 8px 20px rgba(255,255,255,.74), 16px 18px 30px rgba(73, 97, 181, .15); transform: rotate(-8deg); }
-      .hero-orb span { color: var(--blue); font-size: 38px; font-weight: 800; transform: rotate(8deg); }
-      .metrics { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin-bottom: 20px; }
-      .metric { padding: 18px; border-radius: var(--radius-lg); }
-      .metric-head { display: flex; align-items: center; justify-content: space-between; color: var(--muted); font-size: 12px; }
-      .metric-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 12px; color: var(--blue); background: var(--blue-soft); font-size: 16px; }
-      .metric strong { display: block; margin-top: 13px; font-size: 25px; letter-spacing: -.7px; }
-      .metric small { display: block; margin-top: 5px; color: var(--green); font-size: 11px; font-weight: 700; }
-      .workspace-head { display: flex; align-items: end; justify-content: space-between; gap: 16px; margin: 0 0 14px; }
-      .workspace-head h3 { margin: 0; font-size: 20px; letter-spacing: -.5px; }
-      .workspace-head p { margin: 5px 0 0; color: var(--muted); font-size: 12px; }
-      .filters { display: flex; align-items: center; gap: 8px; }
-      .search { width: min(230px, 38vw); padding: 10px 14px; color: var(--ink); border: 1px solid rgba(255,255,255,.8); border-radius: 12px; outline: none; background: rgba(255,255,255,.58); }
-      .refresh { padding: 10px 13px; color: var(--blue); border-radius: 12px; background: rgba(255,255,255,.72); font-size: 12px; font-weight: 700; }
-      .status { min-height: 30px; margin-bottom: 10px; color: var(--muted); font-size: 13px; }
-      .status.error { padding: 12px 14px; color: var(--red); border: 1px solid rgba(220,75,103,.18); border-radius: 14px; background: rgba(255,227,234,.7); }
-      .product-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 15px; }
-      .product-card { min-width: 0; padding: 18px; border-radius: var(--radius-lg); transition: transform .2s ease, box-shadow .2s ease; }
-      .product-card:hover { transform: translateY(-3px); box-shadow: var(--shadow); }
-      .product-top { display: flex; align-items: start; justify-content: space-between; gap: 10px; }
-      .product-title { min-width: 0; }
-      .product-title h4 { overflow: hidden; margin: 0; font-size: 16px; text-overflow: ellipsis; white-space: nowrap; }
-      .product-title small { display: block; margin-top: 5px; color: var(--muted); font-size: 11px; }
-      .priority { padding: 6px 9px; border-radius: 9px; font-size: 10px; font-weight: 800; white-space: nowrap; }
-      .priority.high { color: var(--red); background: var(--red-soft); }
-      .priority.medium { color: var(--amber); background: var(--amber-soft); }
-      .priority.low { color: var(--green); background: var(--green-soft); }
-      .price-row { display: flex; align-items: end; justify-content: space-between; gap: 12px; padding: 20px 0 14px; }
-      .price-row span { color: var(--muted); font-size: 11px; }
-      .price-row strong { display: block; margin-top: 5px; font-size: 24px; letter-spacing: -.8px; }
-      .price-arrow { color: var(--blue); font-size: 22px; }
-      .insight { min-height: 57px; padding: 11px 12px; color: #536078; border-radius: 13px; background: rgba(245,247,255,.8); font-size: 12px; line-height: 1.8; }
-      .card-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 14px; padding-top: 12px; border-top: 1px solid rgba(151,163,194,.17); color: var(--muted); font-size: 11px; }
-      .trend.up { color: var(--green); font-weight: 800; }
-      .trend.down { color: var(--red); font-weight: 800; }
-      .empty { grid-column: 1 / -1; padding: 46px 20px; color: var(--muted); text-align: center; border-radius: var(--radius-lg); }
-      .empty strong { display: block; margin-bottom: 8px; color: var(--ink); font-size: 17px; }
-      .auth-overlay { position: fixed; z-index: 5; inset: 0; display: grid; place-items: center; padding: 20px; background: rgba(221,229,255,.55); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); }
-      .auth-card { width: min(450px, 100%); padding: 30px; border-radius: var(--radius-xl); text-align: center; }
-      .auth-card .brand { justify-content: center; margin-bottom: 22px; }
-      .auth-card h2 { margin: 0 0 8px; font-size: 24px; }
-      .auth-card p { margin: 0 0 22px; color: var(--muted); font-size: 13px; line-height: 1.8; }
-      .auth-form { display: flex; gap: 8px; }
-      .auth-form input { min-width: 0; flex: 1; padding: 13px 14px; color: var(--ink); border: 1px solid rgba(170,183,221,.45); border-radius: 13px; outline: none; background: rgba(255,255,255,.7); }
-      .primary { padding: 13px 17px; color: white; border-radius: 13px; background: linear-gradient(145deg, #4c7cff, #315bdd); box-shadow: 0 9px 18px rgba(55,108,246,.24); font-weight: 700; white-space: nowrap; }
-      .auth-error { min-height: 18px; margin-top: 12px; color: var(--red); font-size: 12px; }
-      .hidden { display: none !important; }
-      .skeleton { min-height: 190px; border-radius: var(--radius-lg); background: linear-gradient(100deg, rgba(255,255,255,.35), rgba(255,255,255,.7), rgba(255,255,255,.35)); background-size: 200% 100%; animation: shimmer 1.3s infinite; }
-      @keyframes shimmer { to { background-position: -200% 0; } }
-      @media (max-width: 1050px) { .app-shell { grid-template-columns: 80px minmax(0, 1fr); } .brand { justify-content: center; padding: 0; } .brand-copy, .nav-label, .sidebar-footer { display: none; } .nav button { justify-content: center; padding: 13px; } }
-      @media (max-width: 800px) { .app-shell { display: block; padding: 10px; } .sidebar { min-height: auto; flex-direction: row; align-items: center; padding: 12px; margin-bottom: 12px; border-radius: 22px; } .nav { display: flex; margin-right: auto; } .nav button { width: 42px; height: 42px; } .main { padding: 8px 2px 24px; } .metrics { grid-template-columns: repeat(2, 1fr); } .product-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-      @media (max-width: 540px) { .topbar, .workspace-head { align-items: start; flex-direction: column; } .top-actions { position: absolute; top: 22px; left: 18px; } .hero { padding: 24px 20px; } .hero-orb { display: none; } .metrics, .product-grid { grid-template-columns: 1fr; } .filters { width: 100%; } .search { width: 100%; } .auth-form { flex-direction: column; } }
-      @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; } }
-    </style>
+    <link rel="stylesheet" href="/dashboard.css" />
   </head>
   <body>
     <div id="auth-overlay" class="auth-overlay">
       <section class="auth-card glass" aria-labelledby="auth-title">
         <div class="brand"><span class="brand-mark">س</span><span class="brand-copy"><h1>سودبان</h1><small>هوش قیمت‌گذاری</small></span></div>
         <h2 id="auth-title">به فضای تصمیم‌گیری خوش آمدید</h2>
-        <p>کلید API فروشنده را وارد کنید تا وضعیت قیمت، سود و ریسک محصولات شما آماده شود.</p>
-        <form id="auth-form" class="auth-form">
-          <input id="api-key" type="password" placeholder="API Key خود را وارد کنید" autocomplete="off" required />
-          <button class="primary" type="submit">ورود به داشبورد</button>
+        <p>با حساب فروشگاه وارد شوید یا حساب تازه بسازید. دسترسی API نیز پشتیبانی می‌شود.</p>
+        <form id="account-form" class="stack">
+          <label>نام فروشگاه (برای ثبت‌نام)<input name="name" autocomplete="organization" /></label>
+          <label>ایمیل<input name="email" type="email" required autocomplete="username" dir="ltr" /></label>
+          <label>رمز عبور (حداقل ۱۲ کاراکتر)<input name="password" type="password" minlength="12" maxlength="72" required autocomplete="current-password" /></label>
+          <div class="filters"><button class="primary" name="login" type="submit">ورود</button><button class="refresh" name="register" type="submit">ساخت حساب</button></div>
         </form>
+        <details><summary>ورود با کلید API / دسترسی عضو تیم</summary>
+        <form id="auth-form" class="auth-form">
+          <input id="api-key" aria-label="کلید API فروشنده" type="password" placeholder="API Key خود را وارد کنید" autocomplete="off" required />
+          <button class="primary" type="submit">ورود به داشبورد</button>
+        </form></details>
         <div id="auth-error" class="auth-error" role="alert"></div>
       </section>
     </div>
@@ -148,18 +32,21 @@
       <aside class="sidebar glass" aria-label="ناوبری اصلی">
         <div class="brand"><span class="brand-mark">س</span><span class="brand-copy"><h1>سودبان</h1><small>هوش قیمت‌گذاری</small></span></div>
         <nav class="nav">
-          <button class="active" type="button"><span class="nav-icon">⌂</span><span class="nav-label">نمای کلی</span></button>
-          <button type="button"><span class="nav-icon">◫</span><span class="nav-label">محصولات</span></button>
-          <button type="button"><span class="nav-icon">◌</span><span class="nav-label">هشدارها</span></button>
-          <button type="button"><span class="nav-icon">◒</span><span class="nav-label">گزارش‌ها</span></button>
+          <button class="active" data-view="overview" type="button"><span class="nav-icon">⌂</span><span class="nav-label">نمای کلی</span></button>
+          <button data-view="products" type="button"><span class="nav-icon">◫</span><span class="nav-label">محصولات</span></button>
+          <button data-view="approvals" type="button"><span class="nav-icon">✓</span><span class="nav-label">تأیید قیمت</span></button>
+          <button data-view="reports" type="button"><span class="nav-icon">◒</span><span class="nav-label">سود واقعی</span></button>
+          <button data-view="onboarding" type="button"><span class="nav-icon">＋</span><span class="nav-label">افزودن محصول</span></button>
+          <button data-view="imports" type="button"><span class="nav-icon">↓</span><span class="nav-label">ورود اکسل</span></button>
+          <button data-view="settings" type="button"><span class="nav-icon">⚙</span><span class="nav-label">تیم و اعلان‌ها</span></button>
         </nav>
         <div class="sidebar-footer"><p>هر تصمیم بهتر، یک قدم به سود پایدار نزدیک‌تر است.</p><button id="logout" type="button">خروج از حساب</button></div>
       </aside>
 
       <main class="main">
         <header class="topbar">
-          <div><p class="eyebrow">یکشنبه، ۱۱ اکتبر ۲۰۲۶</p><h2>صبح بخیر، فروشنده</h2><p>نبض کسب‌وکارتان را در یک نگاه ببینید.</p></div>
-          <div class="top-actions"><button class="icon-button" id="refresh-top" type="button" aria-label="به‌روزرسانی">↻</button><span class="avatar" aria-label="حساب فروشنده">ف</span></div>
+          <div><p class="eyebrow" id="today"></p><h2>صبح بخیر، فروشنده</h2><p>نبض کسب‌وکارتان را در یک نگاه ببینید.</p></div>
+          <div class="top-actions"><button id="logout-mobile" class="refresh" type="button">خروج</button><button class="icon-button" id="refresh-top" type="button" aria-label="به‌روزرسانی">↻</button><span class="avatar" aria-label="حساب فروشنده">ف</span></div>
         </header>
 
         <section class="hero glass">
@@ -174,104 +61,15 @@
           <article class="metric glass"><div class="metric-head"><span>روند فروش</span><span class="metric-icon">⌁</span></div><strong id="metric-trend">—</strong><small id="metric-trend-label">بر اساس داده‌های ثبت‌شده</small></article>
         </section>
 
-        <section>
+        <section id="overview-view">
           <div class="workspace-head"><div><h3>تمرکز امروز</h3><p>محصولات را بر اساس مهم‌ترین بینش مرتب و بررسی کنید.</p></div><div class="filters"><input id="search" class="search" type="search" placeholder="جست‌وجوی محصول یا SKU" aria-label="جست‌وجوی محصول یا SKU" /><button id="refresh" class="refresh" type="button">به‌روزرسانی</button></div></div>
           <div id="status" class="status" role="status" aria-live="polite"></div>
           <div id="product-grid" class="product-grid"></div>
         </section>
+        <section id="workflow-view" class="glass workflow hidden" tabindex="-1" aria-live="polite"></section>
       </main>
     </div>
 
-    <script>
-      const state = { apiKey: "", cards: [], loading: false };
-      const $ = (selector) => document.querySelector(selector);
-      const formatNumber = (value) => typeof value === "number" ? new Intl.NumberFormat("fa-IR").format(Math.round(value)) : "—";
-      const formatPercent = (value) => typeof value === "number" ? `${new Intl.NumberFormat("fa-IR", { maximumFractionDigits: 1 }).format(value)}٪` : "—";
-      const priorityLabel = { HIGH: "فوری", MEDIUM: "قابل توجه", LOW: "پایدار" };
-      const trendLabel = { UP: "رو به رشد", DOWN: "رو به کاهش", STABLE: "پایدار", UNKNOWN: "داده کافی نیست" };
-
-      function setStatus(message, error = false) {
-        const status = $("#status");
-        status.textContent = message;
-        status.className = error ? "status error" : "status";
-      }
-
-      function renderSkeletons() {
-        $("#product-grid").replaceChildren(...Array.from({ length: 6 }, () => { const node = document.createElement("div"); node.className = "skeleton glass"; return node; }));
-      }
-
-      function createCard(card) {
-        const product = card.product || {};
-        const insight = card.wisdom?.insights?.[0];
-        const article = document.createElement("article");
-        article.className = "product-card glass";
-        article.dataset.search = `${product.name || ""} ${product.sku || ""}`.toLocaleLowerCase("fa");
-
-        const top = document.createElement("div"); top.className = "product-top";
-        const title = document.createElement("div"); title.className = "product-title";
-        const heading = document.createElement("h4"); heading.textContent = product.name || "محصول بدون نام";
-        const sku = document.createElement("small"); sku.textContent = `SKU: ${product.sku || "—"}`;
-        title.append(heading, sku);
-        const badge = document.createElement("span"); badge.className = `priority ${(insight?.priority || "LOW").toLowerCase()}`; badge.textContent = priorityLabel[insight?.priority] || "پایدار";
-        top.append(title, badge);
-
-        const priceRow = document.createElement("div"); priceRow.className = "price-row";
-        const current = document.createElement("div"); const currentLabel = document.createElement("span"); currentLabel.textContent = "قیمت فعلی"; const currentPrice = document.createElement("strong"); currentPrice.textContent = formatNumber(product.currentPrice); current.append(currentLabel, currentPrice);
-        const arrow = document.createElement("div"); arrow.className = "price-arrow"; arrow.textContent = "←";
-        const suggested = document.createElement("div"); const suggestedLabel = document.createElement("span"); suggestedLabel.textContent = "پیشنهاد سودبان"; const suggestedPrice = document.createElement("strong"); suggestedPrice.textContent = formatNumber(card.suggestion?.suggestedPrice); suggested.append(suggestedLabel, suggestedPrice);
-        priceRow.append(current, arrow, suggested);
-
-        const insightBox = document.createElement("div"); insightBox.className = "insight"; insightBox.textContent = card.setupRequired ? "برای تحلیل این محصول، هزینه و قاعده قیمت‌گذاری را تکمیل کنید." : (insight?.message || card.wisdom?.topRecommendation || "وضعیت محصول پایدار است.");
-        const footer = document.createElement("div"); footer.className = "card-footer";
-        const margin = document.createElement("span"); margin.textContent = card.suggestion ? `حاشیه سود: ${formatPercent(card.suggestion.expectedMarginPct * 100)}` : "نیازمند تنظیمات";
-        const trend = document.createElement("span"); const direction = card.salesTrend?.direction || "UNKNOWN"; trend.className = `trend ${direction === "UP" ? "up" : direction === "DOWN" ? "down" : ""}`; trend.textContent = trendLabel[direction];
-        footer.append(margin, trend);
-        article.append(top, priceRow, insightBox, footer);
-        return article;
-      }
-
-      function renderCards() {
-        const query = $("#search").value.trim().toLocaleLowerCase("fa");
-        const filtered = state.cards.filter((card) => `${card.product?.name || ""} ${card.product?.sku || ""}`.toLocaleLowerCase("fa").includes(query));
-        const grid = $("#product-grid");
-        if (!filtered.length) {
-          const empty = document.createElement("div"); empty.className = "empty glass";
-          const title = document.createElement("strong"); title.textContent = query ? "محصولی با این جست‌وجو پیدا نشد" : "هنوز محصولی برای نمایش وجود ندارد";
-          const copy = document.createElement("span"); copy.textContent = query ? "عبارت دیگری را امتحان کنید." : "پس از ثبت محصول، تحلیل Wisdom در اینجا نمایش داده می‌شود.";
-          empty.append(title, copy); grid.replaceChildren(empty); return;
-        }
-        grid.replaceChildren(...filtered.map(createCard));
-      }
-
-      function updateMetrics(data) {
-        const cards = data.cards || [];
-        const actionable = cards.filter((card) => card.wisdom?.insights?.some((insight) => insight.priority === "HIGH")).length;
-        const suggestions = cards.filter((card) => card.suggestion).length;
-        const directions = cards.map((card) => card.salesTrend?.direction).filter(Boolean);
-        const rising = directions.filter((direction) => direction === "UP").length;
-        const falling = directions.filter((direction) => direction === "DOWN").length;
-        $("#metric-products").textContent = formatNumber(data.count ?? cards.length);
-        $("#metric-alerts").textContent = formatNumber(actionable);
-        $("#metric-suggestions").textContent = formatNumber(suggestions);
-        $("#metric-trend").textContent = rising > falling ? "رشد" : falling > rising ? "کاهش" : "پایدار";
-        $("#metric-trend-label").textContent = `${formatNumber(rising)} محصول رو به رشد`;
-      }
-
-      async function loadDashboard() {
-        if (!state.apiKey || state.loading) return;
-        state.loading = true; renderSkeletons(); setStatus("در حال همگام‌سازی تحلیل‌ها...");
-        try {
-          const response = await fetch("/dashboard/wisdom", { headers: { Authorization: `Bearer ${state.apiKey}` } });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || "دریافت داشبورد ناموفق بود");
-          state.cards = data.cards || []; updateMetrics(data); renderCards(); setStatus(`آخرین همگام‌سازی: ${new Intl.DateTimeFormat("fa-IR", { timeStyle: "short" }).format(new Date())}`);
-        } catch (error) { $("#product-grid").replaceChildren(); setStatus(error.message || "خطا در دریافت اطلاعات", true); }
-        finally { state.loading = false; }
-      }
-
-      $("#auth-form").addEventListener("submit", (event) => { event.preventDefault(); state.apiKey = $("#api-key").value.trim(); if (!state.apiKey) return; $("#auth-overlay").classList.add("hidden"); $("#app").classList.remove("hidden"); loadDashboard(); });
-      $("#logout").addEventListener("click", () => { state.apiKey = ""; state.cards = []; $("#api-key").value = ""; $("#app").classList.add("hidden"); $("#auth-overlay").classList.remove("hidden"); });
-      $("#refresh").addEventListener("click", loadDashboard); $("#refresh-top").addEventListener("click", loadDashboard); $("#search").addEventListener("input", renderCards);
-    </script>
+    <script src="/dashboard.js" defer></script><script src="/workflows.js" defer></script>
   </body>
 </html>

@@ -31,6 +31,7 @@ const telegramChannel: NotificationChannel = {
     const token = process.env.TELEGRAM_BOT_TOKEN;
     const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
       method: "POST",
+      signal: AbortSignal.timeout(10000),
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         chat_id: payload.seller.telegramChatId,
@@ -57,6 +58,7 @@ const emailChannel: NotificationChannel = {
     const token = process.env.EMAIL_WEBHOOK_TOKEN;
     const response = await fetch(url, {
       method: "POST",
+      signal: AbortSignal.timeout(10000),
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -86,6 +88,7 @@ const smsChannel: NotificationChannel = {
     const token = process.env.SMS_WEBHOOK_TOKEN;
     const response = await fetch(url, {
       method: "POST",
+      signal: AbortSignal.timeout(10000),
       headers: {
         "Content-Type": "application/json",
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -107,19 +110,23 @@ const CHANNELS: NotificationChannel[] = [telegramChannel, emailChannel, smsChann
  * برای هر کانال پیکربندی‌شده روی این فروشنده تلاش برای ارسال می‌کند (best-effort، مستقل از هم).
  * خطای یک کانال باعث توقف بقیه نمی‌شود؛ فقط لاگ می‌شود تا پاسخ API کند/بلاک نشود.
  */
-export async function notifyNewAlerts(payload: AlertNotificationPayload): Promise<void> {
-  if (payload.alerts.length === 0) return;
+export async function notifyNewAlerts(payload: AlertNotificationPayload): Promise<{ sent: number; failed: number }> {
+  const result = { sent: 0, failed: 0 };
+  if (payload.alerts.length === 0) return result;
 
   const configured = CHANNELS.filter((c) => c.isConfigured(payload.seller));
-  if (configured.length === 0) return;
+  if (configured.length === 0) return result;
 
   await Promise.all(
     configured.map(async (channel) => {
       try {
         await channel.send(payload);
+        result.sent++;
       } catch (err) {
-        console.error(`ارسال هشدار از کانال ${channel.name} برای فروشنده ${payload.seller.id} ناموفق بود:`, err);
+        result.failed++;
+        console.error(`Notification delivery failed: ${channel.name}`);
       }
     })
   );
+  return result;
 }

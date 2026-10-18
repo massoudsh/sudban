@@ -1,3 +1,6 @@
+import { loadProductPricingContext } from "../lib/productContext";
+import { calculatePriceFloor } from "../services/marginCalculator";
+import { priceSafety } from "../services/merchantFinance";
 import { Router } from "express";
 import { prisma } from "../lib/prisma";
 import { requireAuth, requireOwnedProduct, requireRole } from "../lib/auth";
@@ -23,7 +26,7 @@ integrationsRouter.post(
         payload: { source: req.body.source ?? null, metadata: req.body.metadata ?? {} },
       },
     });
-    res.status(202).json(job);
+    res.status(202).json({ ...job, executionReady: false, message: "ثبت در صف؛ آداپتور اجرایی مارکت‌پلیس هنوز متصل نیست" });
   }
 );
 
@@ -33,6 +36,9 @@ integrationsRouter.post(
   requireRole("OWNER", "MANAGER"),
   validate(pricePushJobSchema),
   async (req, res) => {
+    const { costs, pricingRule } = await loadProductPricingContext(req.params.id);
+    const error = priceSafety(req.body.targetPrice, calculatePriceFloor(costs, pricingRule.minMarginPct), pricingRule.floorPrice, pricingRule.ceilingPrice);
+    if (error) return res.status(422).json({ error });
     const job = await prisma.integrationJob.create({
       data: {
         sellerId: req.seller!.id,
@@ -51,7 +57,7 @@ integrationsRouter.post(
       data: { sellerId: req.seller!.id, type: "PRICE_PUSH_JOB", quantity: 1, metadata: { jobId: job.id } },
     });
 
-    res.status(202).json(job);
+    res.status(202).json({ ...job, executionReady: false, message: "ثبت در صف؛ آداپتور اجرایی مارکت‌پلیس هنوز متصل نیست" });
   }
 );
 
@@ -71,11 +77,15 @@ integrationsRouter.patch(
   async (req, res) => {
     const existing = await prisma.integrationJob.findFirst({ where: { id: req.params.jobId, sellerId: req.seller!.id } });
     if (!existing) return res.status(404).json({ error: "job یافت نشد" });
+    if (req.body.status !== "CANCELLED" || existing.status !== "QUEUED") {
+      return res.status(409).json({ error: "بدون آداپتور اجرایی فقط لغو درخواست در صف مجاز است" });
+    }
 
-    const job = await prisma.integrationJob.update({
-      where: { id: existing.id },
-      data: { status: req.body.status, result: req.body.result ?? undefined, error: req.body.error ?? undefined },
+    const job = await prisma.integrationJob.updateMany({
+      where: { id: existing.id, sellerId: req.seller!.id, status: "QUEUED" },
+      data: { status: "CANCELLED" },
     });
-    res.json(job);
+    if (!job.count) return res.status(409).json({ error: "وضعیت درخواست تغییر کرده است" });
+    res.json({ id: existing.id, status: "CANCELLED" });
   }
 );
