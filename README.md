@@ -98,6 +98,11 @@ Authorization: Bearer sk_live_...
 | POST | `/accounts/logout` | ابطال نشست؛ توکن داشبورد فقط در حافظه نگهداری می‌شود |
 | POST | `/merchant/onboarding` | ساخت اتمیک محصول، هزینه و قاعده |
 | GET | `/merchant/products` و `/merchant/products/:id/detail` | فهرست و جزئیات محصول با تاریخچه |
+| GET | `/merchant/inventory` | موجودی، نقطه سفارش و اقلام نیازمند اقدام |
+| PATCH | `/merchant/products/:id/inventory` | به‌روزرسانی موجودی/نقطه سفارش/زمان آماده‌سازی |
+| POST | `/merchant/bulk-price-preview` | اعتبارسنجی گروهی تا ۵۰۰ قیمت بدون نوشتن |
+| GET | `/merchant/channel-performance` | سود و درآمد به تفکیک کانال |
+| GET | `/merchant/tax-report` | برآورد مدیریتی VAT با `estimateOnly:true` |
 | GET | `/merchant/profit` | سود SKU/کانال برای حداکثر ۱۰۰۰۰ رکورد آخر؛ داده ناقص جدا گزارش می‌شود |
 | GET | `/merchant/approvals` | فهرست درخواست‌های قیمت |
 | POST | `/merchant/products/:id/approvals` | پیشنهاد قیمت با دلیل و کنترل کف هزینه |
@@ -106,6 +111,7 @@ Authorization: Bearer sk_live_...
 | POST | `/imports/file` | CSV/XLSX خام، حداکثر ۱ مگابایت و ۵۰۰ ردیف |
 | POST | `/imports/catalog` | نگاشت ستون‌ها، `unit: IRR/IRT` و پیش‌نمایش؛ `commit:true` ورود اتمیک |
 | POST | `/merchant/woocommerce/catalog` | همگام‌سازی یک‌طرفه حداکثر ۱۰۰ محصول در هر درخواست |
+| GET | `/merchant/feeds/:channel?unit=IRR\|IRT` | فید XML کاتالوگ برای torob/emalls/basalam/store؛ بدون اجرای خارجی |
 
 فروش: `unitCostSnapshot` هزینه واحد در زمان فروش است؛ `commissionAmount`، `shippingSubsidy`، `discountAmount`، `returnCost` و `settlementDeduction` مبالغ کل همان تراکنش‌اند و یک‌بار کم می‌شوند. بدون snapshot، سود نامعلوم می‌ماند؛ زیان واقعی حذف نمی‌شود. قیمت‌ها در دیتابیس ریال‌اند؛ ورودی تومان یک‌بار ×۱۰ می‌شود.
 

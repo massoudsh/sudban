@@ -99,6 +99,9 @@ model Product {
   name         String
   category     String?
   currentPrice Float? // آخرین قیمت فروش فعلی (برای محاسبه سریع وضعیت)
+  stockQuantity Int @default(0)
+  reorderPoint Int @default(0)
+  handlingTimeDays Int @default(1)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

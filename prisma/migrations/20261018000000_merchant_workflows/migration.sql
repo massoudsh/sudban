@@ -1,3 +1,4 @@
+ALTER TABLE "products" ADD COLUMN "stockQuantity" INTEGER NOT NULL DEFAULT 0, ADD COLUMN "reorderPoint" INTEGER NOT NULL DEFAULT 0, ADD COLUMN "handlingTimeDays" INTEGER NOT NULL DEFAULT 1;
 ALTER TABLE "sellers" ADD COLUMN "passwordHash" TEXT, ADD COLUMN "lastDigestAt" TIMESTAMP(3);
 ALTER TABLE "seller_team_members" ADD COLUMN "apiKeyPrefix" TEXT, ADD COLUMN "apiKeyHash" TEXT;
 CREATE UNIQUE INDEX "seller_team_members_apiKeyPrefix_key" ON "seller_team_members"("apiKeyPrefix");

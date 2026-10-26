@@ -11,6 +11,11 @@ import { netProfit, priceSafety, replacementProtection } from "../services/merch
 export const merchantRouter = Router();
 merchantRouter.use(requireAuth);
 const writer = requireRole("OWNER", "MANAGER");
+const inventorySchema = z.object({ stockQuantity: z.number().int().min(0), reorderPoint: z.number().int().min(0), handlingTimeDays: z.number().int().min(0).max(365) }).strict();
+const bulkPriceSchema = z.object({ items: z.array(z.object({ productId: z.string().min(1), proposedPrice: z.number().positive() })).min(1).max(500) }).strict();
+const channelNames = new Set(["torob", "emalls", "basalam", "store"]);
+const xmlEscape = (value: unknown) => String(value ?? "").replace(/[&<>\"']/g, character => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '\"': "&quot;", "'": "&apos;" }[character]!));
+const parseDate = (value: unknown, fallback: Date) => { const date = value ? new Date(String(value)) : fallback; return Number.isNaN(date.getTime()) ? null : date; };
 const onboarding = z.object({ product: createProductSchema, costs: createCostProfileSchema, rule: pricingRuleSchema })
   .refine(d => d.costs.commissionRate + d.rule.minMarginPct < 1, "کمیسیون و حاشیه سود ناسازگار است")
   .refine(d => d.rule.ceilingPrice == null || d.rule.floorPrice == null || d.rule.ceilingPrice >= d.rule.floorPrice, "سقف کمتر از کف است");
@@ -19,6 +24,50 @@ merchantRouter.post("/onboarding", writer, validate(onboarding), async (req, res
   const product = await prisma.product.create({ data: { sellerId: req.seller!.id, ...req.body.product,
     costProfiles: { create: req.body.costs }, pricingRule: { create: req.body.rule } } });
   res.status(201).json(product);
+});
+merchantRouter.get("/feeds/:channel", async (req, res) => {
+  if (!channelNames.has(req.params.channel)) return res.status(404).json({ error: "کانال فید پشتیبانی نمی‌شود" });
+  const unit = req.query.unit === "IRT" ? "IRT" : "IRR";
+  const multiplier = unit === "IRT" ? 0.1 : 1;
+  const products = await prisma.product.findMany({ where: { sellerId: req.seller!.id, currentPrice: { not: null } }, orderBy: { sku: "asc" }, take: 10000 });
+  const items = products.map(product => `<item><id>${xmlEscape(product.id)}</id><sku>${xmlEscape(product.sku)}</sku><title>${xmlEscape(product.name)}</title><price>${product.currentPrice! * multiplier}</price><currency>${unit}</currency><availability>${product.stockQuantity > 0 ? "in_stock" : "out_of_stock"}</availability><delivery_days>${product.handlingTimeDays}</delivery_days></item>`).join("");
+  res.type("application/xml").send(`<?xml version="1.0" encoding="UTF-8"?><products channel="${xmlEscape(req.params.channel)}">${items}</products>`);
+});
+merchantRouter.get("/inventory", async (req, res) => {
+  const products = await prisma.product.findMany({ where: { sellerId: req.seller!.id }, select: { id: true, sku: true, name: true, stockQuantity: true, reorderPoint: true, handlingTimeDays: true }, orderBy: { stockQuantity: "asc" }, take: 1000 });
+  const lowStock = products.filter(product => product.stockQuantity <= product.reorderPoint);
+  res.json({ products, lowStock: lowStock.length, currency: "units", actionRequired: lowStock.map(product => product.sku) });
+});
+merchantRouter.patch("/products/:id/inventory", requireOwnedProduct, writer, validate(inventorySchema), async (req, res) => {
+  res.json(await prisma.product.update({ where: { id: req.params.id }, data: req.body }));
+});
+merchantRouter.post("/bulk-price-preview", writer, validate(bulkPriceSchema), async (req, res) => {
+  const results = await Promise.all(req.body.items.map(async (item: { productId: string; proposedPrice: number }) => {
+    try {
+      const { costs, pricingRule, product } = await loadProductPricingContext(item.productId);
+      if (product.sellerId !== req.seller!.id) return { productId: item.productId, valid: false, error: "محصول یافت نشد" };
+      const error = priceSafety(item.proposedPrice, calculatePriceFloor(costs, pricingRule.minMarginPct), pricingRule.floorPrice, pricingRule.ceilingPrice);
+      return { productId: item.productId, currentPrice: product.currentPrice, proposedPrice: item.proposedPrice, valid: !error, error: error ?? null };
+    } catch { return { productId: item.productId, valid: false, error: "محصول یا هزینه فعال یافت نشد" }; }
+  }));
+  res.json({ valid: results.every(result => result.valid), results, writes: 0 });
+});
+merchantRouter.get("/channel-performance", async (req, res) => {
+  const records = await prisma.salesRecord.findMany({ where: { product: { sellerId: req.seller!.id } }, include: { product: { select: { sku: true } } }, orderBy: { soldAt: "desc" }, take: 10000 });
+  const groups = new Map<string, { channel: string; orders: number; units: number; revenue: number; netProfit: number; incompleteRecords: number }>();
+  for (const sale of records) {
+    const channel = sale.channel ?? "direct"; const group = groups.get(channel) ?? { channel, orders: 0, units: 0, revenue: 0, netProfit: 0, incompleteRecords: 0 };
+    const profit = netProfit(sale); group.orders++; group.units += sale.quantity; group.revenue += profit.revenue;
+    if (profit.netProfit == null) group.incompleteRecords++; else group.netProfit += profit.netProfit; groups.set(channel, group);
+  }
+  res.json({ currency: "IRR", channels: [...groups.values()].map(group => ({ ...group, marginPct: group.revenue ? group.netProfit / group.revenue : null })), sampledRecords: records.length, sampleLimit: 10000 });
+});
+merchantRouter.get("/tax-report", async (req, res) => {
+  const now = new Date(); const from = parseDate(req.query.from, new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))); const to = parseDate(req.query.to, now); const vatRate = Number(req.query.vatRate ?? 0.1);
+  if (!from || !to || from > to || !Number.isFinite(vatRate) || vatRate < 0 || vatRate > 1) return res.status(400).json({ error: "بازه زمانی یا نرخ مالیات نامعتبر است" });
+  const records = await prisma.salesRecord.findMany({ where: { product: { sellerId: req.seller!.id }, soldAt: { gte: from, lte: to } }, select: { price: true, quantity: true, discountAmount: true, channel: true } });
+  const gross = records.reduce((sum, sale) => sum + sale.price * sale.quantity, 0); const discounts = records.reduce((sum, sale) => sum + sale.discountAmount, 0); const taxable = Math.max(0, gross - discounts);
+  res.json({ from, to, currency: "IRR", vatRate, orders: records.length, grossRevenue: gross, discounts, taxableRevenue: taxable, estimatedVat: taxable * vatRate, estimateOnly: true, disclaimer: "این گزارش برآورد مدیریتی است و جایگزین اظهارنامه مالیاتی نیست" });
 });
 merchantRouter.post("/woocommerce/catalog", writer, validate(z.object({ unit: z.enum(["IRR", "IRT"]), products: z.array(z.object({ sku: z.string().min(1), name: z.string().min(1), price: z.number().nonnegative() })).max(100) })), async (req, res) => {
   const products = req.body.products as { sku: string; name: string; price: number }[];

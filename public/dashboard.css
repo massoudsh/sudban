@@ -115,7 +115,6 @@
       .primary { padding: 13px 17px; color: white; border-radius: 13px; background: linear-gradient(145deg, #4c7cff, #315bdd); box-shadow: 0 9px 18px rgba(55,108,246,.24); font-weight: 700; white-space: nowrap; }
       .auth-error { min-height: 18px; margin-top: 12px; color: var(--red); font-size: 12px; }
       .hidden { display: none !important; }
-      :root { --muted: #525f76; }
       .workflow { border-radius: 24px; padding: 24px; }
       .stack { display: grid; gap: 14px; margin-block: 16px; text-align: start; }
       .stack input, .stack select, .stack textarea { width: 100%; padding: 12px; margin-top: 5px; border: 1px solid #899ab9; border-radius: 12px; background: #fff; color: #172033; font: inherit; }

@@ -1,6 +1,5 @@
 (() => {
   const panel = document.querySelector("#workflow-view");
-  let revision = 0;
   const el = (tag, text, className) => { const node = document.createElement(tag); if (text != null) node.textContent = text; if (className) node.className = className; return node; };
   const button = (text, action) => { const node = el("button", text, "refresh"); node.type = "button"; node.addEventListener("click", () => perform(action, node)); return node; };
   const notice = text => el("p", text, "notice");
@@ -93,6 +92,9 @@
     title("سود خالص به تفکیک SKU و کانال");
     const report = await api("/merchant/profit");
     panel.append(notice("مبالغ ریالی‌اند. سود ردیف‌های بدون بهای تاریخی در جمع لحاظ نمی‌شود؛ گزارش حداکثر ۱۰٬۰۰۰ فروش اخیر را پوشش می‌دهد."), table(["SKU", "کانال", "درآمد", "سود رکوردهای کامل", "رکورد ناقص"], report.groups.map(r => [r.sku, r.channel, formatNumber(r.revenue), formatNumber(r.netProfit), r.incompleteRecords])));
+    const channels = await api("/merchant/channel-performance");
+    panel.append(el("h3", "عملکرد کانال"), table(["کانال", "سفارش", "واحد", "درآمد", "سود", "حاشیه"], channels.channels.map(r => [r.channel, r.orders, r.units, formatNumber(r.revenue), formatNumber(r.netProfit), r.marginPct == null ? "نامعلوم" : formatPercent(r.marginPct * 100)])));
+    panel.append(button("برآورد مالیات این ماه", async () => { const tax = await api("/merchant/tax-report"); panel.prepend(notice(`مالیات ارزش‌افزوده برآوردی: ${formatNumber(tax.estimatedVat)} ریال — ${tax.disclaimer}`)); }));
   }
   function onboarding() {
     title("اولین محصول و تحلیل سود");
@@ -131,6 +133,22 @@
       const results = el("div"); panel.append(form, results);
     }));
   }
+  async function inventory() {
+    title("موجودی و نقطه سفارش"); const report = await api("/merchant/inventory");
+    panel.append(notice(`${report.lowStock} محصول در نقطه سفارش یا پایین‌تر است.`), table(["محصول", "SKU", "موجودی", "نقطه سفارش", "زمان آماده‌سازی"], report.products.map(p => [p.name, p.sku, p.stockQuantity, p.reorderPoint, `${p.handlingTimeDays} روز`])));
+  }
+  async function marketplace() {
+    title("خروجی کانال‌های فروش"); panel.append(notice("فید ریالی/تومانی برای ترب، ایمالز، باسلام و فروشگاه آماده می‌شود؛ این خروجی فقط کاتالوگ است و قیمت خارجی را تغییر نمی‌دهد."));
+    const form = submitForm("دریافت فید", async data => {
+      const response = await fetch(`/merchant/feeds/${data.channel}?unit=${data.unit}`, { headers: { Authorization: `Bearer ${state.apiKey}` } });
+      if (!response.ok) { const error = await response.json(); throw new Error(error.error); }
+      const blob = await response.blob(); const url = URL.createObjectURL(blob); const link = el("a", "دانلود فید XML", "primary"); link.href = url; link.download = `${data.channel}-products.xml`; panel.append(link);
+    });
+    const channel = el("select"); channel.name = "channel"; for (const [value, text] of [["torob", "ترب"], ["emalls", "ایمالز"], ["basalam", "باسلام"], ["store", "فروشگاه"]]) { const option = el("option", text); option.value = value; channel.append(option); }
+    const channelLabel = el("label", "کانال مقصد"); channelLabel.append(channel); form.append(channelLabel);
+    const unit = el("select"); unit.name = "unit"; for (const [value, text] of [["IRR", "ریال"], ["IRT", "تومان"]]) { const option = el("option", text); option.value = value; unit.append(option); }
+    const unitLabel = el("label", "واحد قیمت"); unitLabel.append(unit); form.append(unitLabel); panel.append(form);
+  }
   async function settings() {
     title("تیم، اعلان و اشتراک");
     panel.append(notice("عضو تیم با کلید اختصاصی و نقش مشخص وارد می‌شود. کلید در پایگاه داده به‌صورت هش نگهداری می‌شود و فقط هنگام صدور نمایش داده می‌شود."));
@@ -150,9 +168,9 @@
     });
     field(signal, "source", "نام منبع نرخ"); field(signal, "currency", "ارز مبنا (مثلاً USD)", "text", "USD"); field(signal, "rate", "هر واحد ارز چند ریال است؟", "number"); field(signal, "capturedAt", "تاریخ نرخ", "datetime-local"); panel.append(el("h3", "هزینه جایگزینی"), signal);
   }
-  const views = { products, approvals, reports, onboarding, imports, settings };
+  const views = { products, approvals, reports, onboarding, imports, inventory, marketplace, settings };
   document.querySelectorAll("[data-view]").forEach(control => control.addEventListener("click", () => {
-    const view = control.dataset.view; revision++;
+    const view = control.dataset.view;
     document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("active", b === control));
     document.querySelector("#overview-view").classList.toggle("hidden", view !== "overview"); panel.classList.toggle("hidden", view === "overview");
     if (view !== "overview") { panel.focus(); perform(views[view]); }
