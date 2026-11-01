@@ -20,6 +20,25 @@ async function createSession(sellerId: string) {
   return { token, expiresAt };
 }
 
+const DEMO_EMAIL = "demo@sudban.local";
+const demoEnabled = () => process.env.DEMO_MODE === "true";
+
+accountsRouter.post("/demo", async (_req, res) => {
+  if (!demoEnabled()) return res.status(404).json({ error: "مسیر یافت نشد" });
+  let seller = await prisma.seller.findUnique({ where: { email: DEMO_EMAIL } });
+  if (!seller) {
+    const { apiKeyPrefix, apiKeyHash } = await generateApiKey();
+    try {
+      seller = await prisma.seller.create({ data: { name: "فروشگاه نمونه سودبان", email: DEMO_EMAIL, apiKeyPrefix, apiKeyHash, role: "OWNER" } });
+    } catch (error) {
+      if ((error as { code?: string }).code !== "P2002") throw error;
+      seller = await prisma.seller.findUnique({ where: { email: DEMO_EMAIL } });
+    }
+  }
+  if (!seller) throw new Error("Demo seller unavailable");
+  res.json({ seller: { id: seller.id, name: seller.name, email: seller.email, role: "OWNER" }, demo: true, ...await createSession(seller.id) });
+});
+
 accountsRouter.post("/register", validate(registration), async (req, res) => {
   const { apiKeyPrefix, apiKeyHash } = await generateApiKey();
   try {

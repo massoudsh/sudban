@@ -46,7 +46,19 @@ describe("merchant HTTP regressions", () => {
     expect(res.status).toBe(400);
     expect(db.product.create).not.toHaveBeenCalled();
   });
-  it("keeps public registration reachable before scoped authentication", async () => {
+  it("keeps the demo account unavailable unless explicitly enabled", async () => {
+    delete process.env.DEMO_MODE;
+    expect((await request(app).post("/accounts/demo")).status).toBe(404);
+  });
+  it("issues an owner session for an explicitly enabled demo account", async () => {
+    process.env.DEMO_MODE = "true";
+    db.seller.findUnique.mockResolvedValue(null); db.seller.create.mockResolvedValue(owner); db.sellerSession.create.mockResolvedValue({ id: "session" });
+    const res = await request(app).post("/accounts/demo");
+    expect(res.status).toBe(200); expect(res.body).toMatchObject({ demo: true, seller: { id: owner.id, role: "OWNER" } });
+    expect(res.body.token).toMatch(/^sb_session_/);
+    delete process.env.DEMO_MODE;
+  });
+
     db.seller.create.mockResolvedValue(owner);
     const res = await request(app).post("/sellers").send({ name: "Store", email: "store@example.test" });
     expect(res.status).toBe(201);

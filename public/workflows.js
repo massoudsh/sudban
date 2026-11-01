@@ -176,6 +176,15 @@
     if (view !== "overview") { panel.focus(); perform(views[view]); }
   }));
   document.querySelector("#today").textContent = new Intl.DateTimeFormat("fa-IR", { dateStyle: "full" }).format(new Date());
+  document.querySelector("#demo-login").addEventListener("click", async event => {
+    const control = event.currentTarget; control.disabled = true;
+    try {
+      const response = await fetch("/accounts/demo", { method: "POST" }); const account = await response.json();
+      if (!response.ok) throw new Error(account.error || "نسخه دمو در این محیط فعال نیست");
+      await enterDashboard(account.token);
+    } catch (error) { document.querySelector("#auth-error").textContent = error.message; }
+    finally { control.disabled = false; }
+  });
   document.querySelector("#account-form").addEventListener("submit", async event => {
     event.preventDefault(); const form = event.currentTarget; const control = event.submitter; control.disabled = true;
     const data = Object.fromEntries(new FormData(form)); const register = control.name === "register";
