@@ -25,6 +25,32 @@ npm test                 # اجرای تست‌های واحد موتورهای 
 npm run build && npm start
 ```
 
+## اجرا با Docker
+
+فایل‌های `Dockerfile` (چندمرحله‌ای: build سپس runtime غیر روت با کاربر `node`) و
+`docker-compose.yml` شامل سه سرویس است: `db` (Postgres 16)، `migrate` (اجرای یک‌باره
+`prisma migrate deploy`) و `app` (API کامپایل‌شده). سرویس `app` فقط پس از healthy شدن
+دیتابیس و موفقیت migration بالا می‌آید و healthcheck روی `/health` دارد.
+
+```bash
+cp .env.example .env
+# در .env این دو مقدار را بگذارید (رمزها یکسان):
+#   POSTGRES_PASSWORD=یک-رمز-قوی
+#   DATABASE_URL="postgresql://sudban:یک-رمز-قوی@db:5432/sudban?schema=public"
+docker compose up -d --build
+docker compose ps        # app باید healthy باشد
+curl http://localhost:3000/health
+```
+
+نکته‌ها:
+- `DATABASE_URL` صریح است تا رفتار قابل پیش‌بینی بماند؛ برای دیتابیس بیرونی، همان متغیر را به آن میزبان تغییر دهید و سرویس `db` را حذف/غیرفعال کنید.
+- تصویر نهایی فقط dependencyهای production را دارد؛ Prisma CLI در stage جداگانه `migrate` می‌ماند.
+- `docker compose logs migrate` وضعیت مهاجرت را نشان می‌دهد؛ برای دیتابیس تازه، migration پایه `20260101000000_init` ابتدا اجرا می‌شود.
+- اگر دیتابیسی از قبل و بدون این baseline ساخته شده، یک‌بار `npx prisma migrate resolve --applied 20260101000000_init` بزنید تا جدول‌های موجود دوباره ساخته نشوند.
+- پوشه‌های `node_modules`، `dist`، `.env` و `uploads` با `.dockerignore` از context حذف می‌شوند.
+- سرویس `db` فقط روی loopback منتشر می‌شود؛ در production پورت آن را ببندید یا با شبکه خصوصی محدود کنید.
+- اجرای `docker build` داخل این کانتینر توسعه مجاز نیست؛ ساخت ایمیج را روی سرور یا ماشین خودتان انجام دهید.
+
 ## متغیرهای محیطی
 
 | متغیر | پیش‌فرض | شرح |
