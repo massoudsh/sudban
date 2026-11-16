@@ -58,7 +58,7 @@ describe("merchant HTTP regressions", () => {
     expect(res.body.token).toMatch(/^sb_session_/);
     delete process.env.DEMO_MODE;
   });
-
+  it("keeps public registration reachable before scoped authentication", async () => {
     db.seller.create.mockResolvedValue(owner);
     const res = await request(app).post("/sellers").send({ name: "Store", email: "store@example.test" });
     expect(res.status).toBe(201);
