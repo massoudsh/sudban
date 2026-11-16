@@ -1,22 +1,26 @@
 # API Routes (`src/routes/*` + `src/server.ts`)
 
-> دوازده روتر Express؛ routeهای محصول زیر `/products`، routeهای فروشنده زیر `/sellers` و dashboard/billing/economic در سطح ریشه mount شده‌اند.
+> پانزده روتر Express. از commit `33638fd` mount ها **scoped** شده‌اند (هر روتر زیر پیشوند خودش) تا
+> روترهای احرازشده مسیر ثبت‌نام عمومی `POST /sellers` را نگیرند.
 
 ## مسئولیت‌ها
 | روتر | مسیر پایه | عملیات |
 |---|---|---|
-| `sellersRouter` | `/sellers` | ساخت فروشنده + صدور کلید API، اطلاعات فروشنده، تنظیم کانال هشدار، مدیریت team/subscription/usage |
+| `sellersRouter` | `/sellers` | ساخت فروشنده + صدور کلید API، `GET /me`، تنظیم کانال هشدار، team/subscription/usage |
+| `accountsRouter` | `/accounts` | ثبت‌نام/ورود/خروج حساب با نشست ۸ ساعته و `POST /demo` (فقط با `DEMO_MODE=true`) |
+| `merchantRouter` | `/merchant` | onboarding، محصولات و جزئیات، سود SKU/کانال، تأیید قیمت، هزینه جایگزینی، موجودی، پیش‌بررسی گروهی قیمت، گزارش VAT، فید کانال، WooCommerce |
+| `importsRouter` | `/imports` | `POST /file` (CSV/XLSX خام) و `POST /catalog` (نگاشت + preview/commit) |
 | `productsRouter` | `/products` | CRUD محصول |
 | `costsRouter` | `/products/:id/costs` | ثبت/تاریخچه `CostProfile` |
 | `pricingRulesRouter` | `/products/:id/pricing-rule` | تعیین/دریافت `PricingRule` |
-| `competitorsRouter` | `/products/:id/competitor-prices` | ثبت/دریافت `CompetitorPrice` |
-| `salesRouter` | `/products/:id/sales` | ثبت/دریافت `SalesRecord` |
+| `competitorsRouter` | `/products/:id/competitor-prices` | ثبت/دریافت `CompetitorPrice` (با `inStock` و `matchConfidence`) |
+| `salesRouter` | `/products/:id/sales` | ثبت/دریافت `SalesRecord` با snapshot هزینه و کسورات واقعی |
 | `pricingRouter` | `/products/:id/margin`, `/suggestion`, `/ml-suggestion`, `/simulate`, `/alerts`, `/wisdom` | صدا زدن موتورهای قیمت‌گذاری |
 | `bulkImportRouter` | `/products/bulk-import?type=...` | import دسته‌ای CSV/JSON برای سه مدل |
-| `integrationsRouter` | `/products/:id/competitor-sync-jobs`, `/price-push-jobs`, `/products/integration-jobs` | صف integration و price-push |
-| `economicSignalsRouter` | `/economic-signals`, `/products/:id/cost-adjustment-proposal` | ثبت سیگنال اقتصادی و پیشنهاد تعدیل هزینه |
+| `integrationsRouter` | `/integrations/:id/competitor-sync-jobs`, `/price-push-jobs`, `/integrations/integration-jobs` | صف integration؛ `executionReady:false` و فقط QUEUED→CANCELLED |
+| `economicSignalsRouter` | `/economic/economic-signals`, `/economic/products/:id/cost-adjustment-proposal` | ثبت سیگنال اقتصادی و پیشنهاد تعدیل هزینه |
 | `dashboardRouter` | `/dashboard/wisdom` | کارت‌های Wisdom برای dashboard |
-| `billingRouter` | `/billing/plans`, `/billing/usage-events` | پلن‌ها و رخدادهای مصرف |
+| `billingRouter` | `/billing/plans`, `/billing/estimate` | پلن‌های کنترل‌شده سرور و برآورد مصرف (`billing/usage-events` حذف شد) |
 
 ## وابستگی‌ها
 - [[entities/pricing-engines]] — `pricingRouter` مستقیماً این موتورها را فراخوانی می‌کند
@@ -49,11 +53,14 @@
   side-effect) فراخوانی می‌کند؛ در مقابل `GET /:id/suggestion` یک `PriceSuggestion` ذخیره می‌کند.
 - `GET /:id/ml-suggestion` با داده فروش تاریخی مدل کشش قیمت را اجرا می‌کند، خروجی را در `PriceSuggestion` و مصرف را در `UsageEvent` ذخیره می‌کند.
 - routeهای integration فقط job ثبت/به‌روزرسانی می‌کنند؛ اتصال واقعی marketplace یا worker بیرون از request path است.
-- `public/dashboard.html` فایل استاتیک است؛ داده‌های dashboard فقط با `GET /dashboard/wisdom` و API key برمی‌گردد.
-- UI داشبورد RTL با glassmorphism، KPIهای زنده، فیلتر محصول، loading skeleton، empty/error state و logout ساخته شده و برای کاهش ریسک XSS، مقدارهای API را با `textContent` در DOM قرار می‌دهد.
+- `public/` شامل `dashboard.html` + `dashboard.css` + `dashboard.js` + `workflows.js` است (CSP سخت‌گیرانه: بدون inline script).
+- routeهای `merchant` و `imports` فقط OWNER/MANAGER را برای نوشتن می‌پذیرند؛ گزارش‌های خواندنی برای همه نقش‌ها.
+- `POST /merchant/approvals/:id/:action` در تراکنش Serializable با کنترل وضعیت و قیمت موردانتظار اجرا می‌شود و خروجی آن `scope:"LOCAL_CATALOG", marketplaceApplied:false` است.
+- `GET /imports` مسیر ندارد؛ فایل XLSX ابتدا با `workbookGuard` (۲۰۰ entry، ۸MB بازشده) بررسی می‌شود.
+- `GET /merchant/feeds/:channel` فقط `torob|emalls|basalam|store` را می‌پذیرد و XML escape‌شده برمی‌گرداند.
 
 ## منابع کد
-- `src/server.ts:15-111` — نمونه‌سازی اپ، زنجیره میان‌افزار، mount روترها، هندلر خطا، تایم‌اوت‌ها
+- `src/server.ts` — نمونه‌سازی اپ، زنجیره میان‌افزار، mount روترها، هندلر خطا، تایم‌اوت‌ها
 - `src/routes/*.ts` — پیاده‌سازی هر روتر
 - `src/lib/validate.ts` — میان‌افزار اعتبارسنجی zod
 - نمونه جریان کامل curl: `README.md`

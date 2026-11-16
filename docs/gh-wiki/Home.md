@@ -22,26 +22,29 @@
 - [[Data Model|Data-Model]] — همه مدل‌های Prisma
 - [[Pricing Engines|Pricing-Engines]] — شش موتور منطق قیمت‌گذاری
 - [[Api Routes|Api-Routes]] — همه route های Express
+- [[Merchant Workflows|Merchant-Workflows]] — ورود حساب، ورود کاتالوگ، سود واقعی، تأیید قیمت و موجودی
+- [[Deployment|Deployment]] — ایمیج Docker، migration و Compose
 - [[Pricing Strategy|Pricing-Strategy]] — منطق سه استراتژی قیمت‌گذاری و کشش قیمتی
 - [[Wisdom Engine|Wisdom-Engine]] — منطق ترکیب بینش‌ها
 - [[Market Research|Market-Research]] — رقبای بین‌المللی مشابه و جایگاه تمایز
 
 ## لایه API
-هشت گروه route روی پیشوند `/sellers` و `/products/...`. احراز هویت با کلید API (`Authorization:
-Bearer` یا `x-api-key`)، اعتبارسنجی ورودی با zod در `src/lib/validate.ts`، و محافظت پایه (helmet +
-CORS allowlist + rate limit + سقف اندازه بدنه + تایم‌اوت سرور) که همه از env قابل تنظیم‌اند.
-جزئیات: [[Api Routes|Api-Routes]].
+پانزده روتر Express؛ از commit `33638fd` mount ها scoped شده‌اند (`/sellers`, `/accounts`, `/merchant`,
+`/imports`, `/products/...`, `/integrations`, `/economic`, `/dashboard`, `/billing`). دو روش احراز
+هویت وجود دارد: کلید API (`Authorization: Bearer` یا `x-api-key`) و نشست حساب (`sb_session_`، هش
+SHA256، ۸ ساعت). اعتبارسنجی با zod در `src/lib/validate.ts` و محافظت پایه (helmet + CORS allowlist +
+rate limit + سقف بدنه + تایم‌اوت سرور) از env قابل تنظیم است. جزئیات: [[Api Routes|Api-Routes]].
 
 ## وضعیت فعلی
-کد MVP نوشته شده (routes + services + schema)، از نظر type-safe. تست واحد هر هفت موتور با Vitest
-نوشته شده (`npm test`)؛ جزئیات پوشش: [[Pricing Engines|Pricing-Engines]].
+کد MVP کامل (routes + services + schema) و type-safe است. سه migration شامل baseline
+`20260101000000_init` وجود دارد که با اسکیمای فعلی (۱۵ جدول) مطابقت دارد.
 
-**نتیجه اجرای واقعی تست‌ها (محلی، ۲۰۲۶-۰۹-۱۹):** `vitest run` → **۹۸ تست در ۷ فایل، همه پاس (۰ خطا)**؛
-`tsc -p tsconfig.json --noEmit` بدون خطا.
+**آخرین اجرای واقعی تست‌ها (محلی، ۲۰۲۶-۱۱-۱۶):** `vitest run` → **۱۳۸ تست در ۱۲ فایل، همه پاس**؛
+`tsc --noEmit` و `prisma validate` بدون خطا.
 
-`prisma generate` / `prisma migrate` هنوز روی سرور واقعی استقرار اجرا نشده؛ نصب پکیج‌ها و اجرای
-تست فقط توسعه‌ای/محلی بوده است. بک‌لاگ نزدیک‌مدت و نقشه راه آینده: `docs/ISSUES.md` (همه ۱۳ مورد
-GitHub Issue واقعی دارند). کارهای حل issue های #1/#2/#5 روی برنچ `fix/open-issues-batch` ارائه شده است.
+Docker اضافه شده (`Dockerfile` سه‌مرحله‌ای + `docker-compose.yml` با Postgres، migrate و app)؛ جزئیات:
+[[Deployment|Deployment]]. ساخت ایمیج و migration روی دیتابیس واقعی هنوز در این محیط اجرا نشده و
+باید روی سرور انجام شود. بک‌لاگ نزدیک‌مدت: `docs/ISSUES.md` (همه ۱۳ مورد GitHub Issue واقعی دارند).
 
 ## پشته فناوری
 Node.js, TypeScript, Express, Prisma ORM, PostgreSQL.

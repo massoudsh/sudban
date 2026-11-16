@@ -11,3 +11,7 @@
 ## [2026-09-19] test | اجرای واقعی تست‌ها روی ماشین توسعه (پیش‌تر فقط نوشته شده بودند و اجرا نشده بودند): `vitest run` → ۹۸ تست در ۷ فایل، همه پاس (۰ خطا، ۰ skip)؛ `tsc -p tsconfig.json --noEmit` بدون خطا؛ وضعیت در [[overview]] به‌روز شد
 ## [2026-09-19] update | sync دو صفحه mirror در `docs/gh-wiki/` با منبع حقیقت `docs/wiki/` طبق AGENTS.md: `Pricing-Engines.md` (edge caseهای جدید موتورها + بخش «تست‌های واحد (#1)») و `Home.md` (لایه API + وضعیت واقعی تست‌ها + اشاره به برنچ `fix/open-issues-batch`)
 ## [2026-09-26] update | پیاده‌سازی issueهای #7 تا #13: ML pricing v2، integration jobs، price-push کنترل‌شده، economic signals، dashboard، RBAC و billing metering
+## [2026-10-26] feature | قابلیت‌های بازار ایران: موجودی/نقطه سفارش، پیش‌بررسی گروهی قیمت، عملکرد کانال، برآورد VAT و فید XML برای ترب/ایمالز/باسلام؛ حذف state و CSS تکراری UI
+## [2026-11-01] feature | ورود دمو opt-in با `DEMO_MODE=true`: فروشگاه OWNER نمونه و نشست ۸ ساعته؛ پیش‌فرض ۴۰۴
+## [2026-11-16] update | Dockerize: Dockerfile سه‌مرحله‌ای، compose با Postgres+migrate+app، entrypoint با انتظار دیتابیس، baseline migration `20260101000000_init`؛ رفع تست شکسته دمو (۱۳۸ تست سبز)
+## [2026-11-16] update | سیاست جدید ویکی: هر تغییر بدون استثنا باید در ویکی بازتاب یابد (حذف معافیت تغییرات trivial)؛ به‌روزرسانی `schema.md` (هر دو ویکی) و `AGENTS.md`؛ صفحات `api-routes` و `data-model` با وضعیت فعلی sync شدند و سه صفحه concept (auth، merchant-workflows، deployment) اضافه شد
