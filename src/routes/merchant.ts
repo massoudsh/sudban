@@ -7,6 +7,7 @@ import { createProductSchema, createCostProfileSchema, pricingRuleSchema } from 
 import { loadProductPricingContext } from "../lib/productContext";
 import { calculateMargin, calculatePriceFloor } from "../services/marginCalculator";
 import { netProfit, priceSafety, replacementProtection } from "../services/merchantFinance";
+import { mapCompliance, pricePosition, promotionPlan, stockoutForecast, summarizePriceHistory } from "../services/merchantInsights";
 
 export const merchantRouter = Router();
 merchantRouter.use(requireAuth);
@@ -76,6 +77,64 @@ merchantRouter.post("/woocommerce/catalog", writer, validate(z.object({ unit: z.
     create: { sellerId: req.seller!.id, sku: p.sku, name: p.name, currentPrice: p.price * multiplier || null },
     update: { name: p.name, currentPrice: p.price * multiplier || null } })));
   res.json({ imported: products.length, currency: "IRR" });
+});
+
+// --- بینش‌های رقابتی (الهام‌گرفته از Price2Spy، Sellerboard، Prisync، Torob و Helium 10) ---
+
+/** تخلف MAP: هر محصولی که قیمت فعلی‌اش زیر حداقل قیمت تبلیغ‌شده باشد. */
+merchantRouter.get("/map-violations", async (req, res) => {
+  const rules = await prisma.pricingRule.findMany({ where: { mapPrice: { not: null }, product: { sellerId: req.seller!.id, currentPrice: { not: null } } }, include: { product: { select: { id: true, sku: true, name: true, currentPrice: true } } }, take: 2000 });
+  const violations = rules.map(rule => ({ productId: rule.product.id, sku: rule.product.sku, name: rule.product.name, currentPrice: rule.product.currentPrice!, mapPrice: rule.mapPrice!, ...mapCompliance(rule.product.currentPrice!, rule.mapPrice!) }))
+    .filter(item => item.status === "VIOLATION").sort((a, b) => (b.deviationPct ?? 0) - (a.deviationPct ?? 0));
+  res.json({ currency: "IRR", configured: rules.length, violations, compliant: rules.length - violations.length });
+});
+
+/** پیش‌بینی اتمام موجودی بر اساس سرعت فروش ۳۰ روز اخیر. */
+merchantRouter.get("/stock-forecast", async (req, res) => {
+  const windowDays = 30; const since = new Date(Date.now() - windowDays * 86400000);
+  const products = await prisma.product.findMany({ where: { sellerId: req.seller!.id }, select: { id: true, sku: true, name: true, stockQuantity: true, reorderPoint: true, handlingTimeDays: true }, take: 1000 });
+  const sales = await prisma.salesRecord.findMany({ where: { product: { sellerId: req.seller!.id }, soldAt: { gte: since } }, select: { productId: true, quantity: true } });
+  const soldByProduct = new Map<string, number>();
+  for (const sale of sales) soldByProduct.set(sale.productId, (soldByProduct.get(sale.productId) ?? 0) + sale.quantity);
+  const forecasts = products.map(product => ({ productId: product.id, sku: product.sku, name: product.name, stockQuantity: product.stockQuantity, reorderPoint: product.reorderPoint,
+    ...stockoutForecast({ stockQuantity: product.stockQuantity, reorderPoint: product.reorderPoint, unitsSold: soldByProduct.get(product.id) ?? 0, windowDays, leadTimeDays: product.handlingTimeDays }) }))
+    .sort((a, b) => (a.daysOfCover ?? Infinity) - (b.daysOfCover ?? Infinity));
+  res.json({ windowDays, urgent: forecasts.filter(f => f.willStockOutBeforeRestock).length, forecasts });
+});
+
+/** جایگاه قیمت یک محصول در باند رقبا. */
+merchantRouter.get("/products/:id/price-position", requireOwnedProduct, async (req, res) => {
+  const product = await prisma.product.findUnique({ where: { id: req.params.id }, select: { currentPrice: true } });
+  const prices = await prisma.competitorPrice.findMany({ where: { productId: req.params.id, inStock: true, currency: "IRR", matchConfidence: { gte: 0.9 }, capturedAt: { gte: new Date(Date.now() - 24 * 3600000), lte: new Date() } }, select: { price: true } });
+  res.json({ currency: "IRR", ...pricePosition(product?.currentPrice ?? null, prices.map(p => p.price)) });
+});
+
+/** تاریخچه قیمت (پیشنهادها، تأییدها و قیمت رقبا) به‌ترتیب زمانی. */
+merchantRouter.get("/products/:id/price-history", requireOwnedProduct, async (req, res) => {
+  const [suggestions, approvals, competitors] = await Promise.all([
+    prisma.priceSuggestion.findMany({ where: { productId: req.params.id }, select: { suggestedPrice: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 200 }),
+    prisma.priceApproval.findMany({ where: { productId: req.params.id }, select: { proposedPrice: true, createdAt: true, status: true }, orderBy: { createdAt: "desc" }, take: 200 }),
+    prisma.competitorPrice.findMany({ where: { productId: req.params.id }, select: { price: true, capturedAt: true }, orderBy: { capturedAt: "desc" }, take: 200 }),
+  ]);
+  const points = [
+    ...suggestions.map(s => ({ at: s.createdAt, price: s.suggestedPrice, source: "SUGGESTION" })),
+    ...approvals.map(a => ({ at: a.createdAt, price: a.proposedPrice, source: "APPROVAL", status: a.status })),
+    ...competitors.map(c => ({ at: c.capturedAt, price: c.price, source: "COMPETITOR" })),
+  ].sort((a, b) => a.at.getTime() - b.at.getTime());
+  res.json({ currency: "IRR", summary: summarizePriceHistory(points.map(p => ({ at: p.at, price: p.price }))), points });
+});
+
+/** برنامه تخفیف: بیشترین تخفیفی که قیمت را زیر کف سود نبرد. */
+merchantRouter.get("/products/:id/promotion-plan", requireOwnedProduct, async (req, res) => {
+  const { product, costs, pricingRule } = await loadProductPricingContext(req.params.id);
+  if (!product.currentPrice) return res.status(409).json({ error: "قیمت فعلی لازم است" });
+  const costFloor = calculatePriceFloor(costs, pricingRule.minMarginPct);
+  const manualFloor = pricingRule.floorPrice ?? 0;
+  const floor = Math.max(costFloor, manualFloor);
+  const plan = promotionPlan(product.currentPrice, floor);
+  const map = mapCompliance(Math.max(plan.maxSafePrice, 0), pricingRule.mapPrice);
+  res.json({ currency: "IRR", currentPrice: product.currentPrice, costFloor, manualFloor: pricingRule.floorPrice ?? null, effectiveFloor: floor, ...plan,
+    mapLimited: plan.maxSafePrice < (pricingRule.mapPrice ?? 0), mapStatus: map.status });
 });
 
 merchantRouter.get("/products", async (req, res) => {

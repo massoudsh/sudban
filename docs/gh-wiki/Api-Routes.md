@@ -9,7 +9,7 @@
 |---|---|---|
 | `sellersRouter` | `/sellers` | ساخت فروشنده + صدور کلید API، `GET /me`، کانال هشدار، team/subscription/usage |
 | `accountsRouter` | `/accounts` | register/login/logout با نشست ۸ ساعته و `POST /demo` (فقط `DEMO_MODE=true`) |
-| `merchantRouter` | `/merchant` | onboarding، محصولات، سود SKU/کانال، تأیید قیمت، جایگزینی، موجودی، فید کانال |
+| `merchantRouter` | `/merchant` | onboarding، محصولات، سود SKU/کانال، تأیید قیمت، جایگزینی، موجودی، فید کانال و پنج گزارش بینش |
 | `importsRouter` | `/imports` | `POST /file` (CSV/XLSX خام) و `POST /catalog` (نگاشت + preview/commit) |
 | `productsRouter` | `/products` | CRUD محصول |
 | `costsRouter` | `/products/:id/costs` | ثبت/تاریخچه `CostProfile` |

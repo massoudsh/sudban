@@ -8,7 +8,7 @@
 | `Seller` | فروشنده (صاحب حساب) | `email` یکتا؛ `passwordHash`، `role`، `lastDigestAt` |
 | `Product` | محصول یک فروشنده | `@@unique([sellerId, sku])`؛ `currentPrice` + `stockQuantity`/`reorderPoint`/`handlingTimeDays` |
 | `CostProfile` | بهای تمام‌شده **نسخه‌بندی‌شده** | چون اقتصاد ایران نوسان هزینه سریع دارد؛ رکورد جدید اضافه می‌شود، `isActive=true` روی جدیدترین |
-| `PricingRule` | قاعده قیمت‌گذاری هر محصول (۱به۱) | `minMarginPct`, `floorPrice`/`ceilingPrice` دستی، `strategy`, `priceElasticity` اختیاری |
+| `PricingRule` | قاعده قیمت‌گذاری هر محصول (۱به۱) | `minMarginPct`, `floorPrice`/`ceilingPrice` دستی، `mapPrice` (حداقل قیمت تبلیغ‌شده)، `strategy`, `priceElasticity` اختیاری |
 | `CompetitorPrice` | قیمت رقیب در یک کانال/زمان | `channel` مثل digikala/basalam/torob؛ `inStock` و `matchConfidence` |
 | `SalesRecord` | تراکنش/دوره فروش واقعی | `unitCostSnapshot` (nullable) + پنج ستون کسورات واقعی؛ بدون snapshot سود `null` |
 | `PriceSuggestion` | خروجی ذخیره‌شده موتور پیشنهاد قیمت | `rationale` به‌صورت آرایه JSON از دلایل |

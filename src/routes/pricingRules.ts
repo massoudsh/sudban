@@ -16,12 +16,12 @@ pricingRulesRouter.put(
   validate(pricingRuleSchema),
   async (req, res) => {
     const productId = req.params.id;
-    const { minMarginPct, targetMarginPct, floorPrice, ceilingPrice, strategy, priceElasticity } = req.body;
+    const { minMarginPct, targetMarginPct, floorPrice, ceilingPrice, mapPrice, strategy, priceElasticity } = req.body;
 
     const rule = await prisma.pricingRule.upsert({
       where: { productId },
-      update: { minMarginPct, targetMarginPct, floorPrice, ceilingPrice, strategy, priceElasticity },
-      create: { productId, minMarginPct, targetMarginPct, floorPrice, ceilingPrice, strategy, priceElasticity },
+      update: { minMarginPct, targetMarginPct, floorPrice, ceilingPrice, mapPrice, strategy, priceElasticity },
+      create: { productId, minMarginPct, targetMarginPct, floorPrice, ceilingPrice, mapPrice, strategy, priceElasticity },
     });
 
     res.json(rule);

@@ -4,7 +4,7 @@ import request from "supertest";
 
 const db = vi.hoisted(() => {
   const model = () => ({ findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), create: vi.fn(), update: vi.fn(), updateMany: vi.fn(), deleteMany: vi.fn(), count: vi.fn(), aggregate: vi.fn() });
-  return { seller: model(), sellerSession: model(), sellerTeamMember: model(), usageEvent: model(), product: model(), costProfile: model(), pricingRule: model(), competitorPrice: model(), priceApproval: model(), subscription: model(), salesRecord: model(), economicSignal: model(), $transaction: vi.fn() };
+  return { seller: model(), sellerSession: model(), sellerTeamMember: model(), usageEvent: model(), product: model(), costProfile: model(), pricingRule: model(), competitorPrice: model(), priceApproval: model(), priceSuggestion: model(), subscription: model(), salesRecord: model(), economicSignal: model(), $transaction: vi.fn() };
 });
 vi.mock("../lib/prisma", () => ({ prisma: db }));
 vi.mock("../lib/apiKey", () => ({ extractApiKeyPrefix: (key: string) => key, verifyApiKey: async () => true,
@@ -136,6 +136,46 @@ describe("merchant HTTP regressions", () => {
     db.priceApproval.updateMany.mockResolvedValue({ count: 1 }); db.product.updateMany.mockResolvedValue({ count: 1 });
     const res = await request(app).post("/merchant/approvals/a1/apply").set(auth).send({});
     expect(res.status).toBe(200); expect(res.body).toMatchObject({ status: "APPLIED", marketplaceApplied: false });
+  });
+  it("lists MAP violations and leaves compliant products out", async () => {
+    db.pricingRule.findMany.mockResolvedValue([
+      { mapPrice: 1000, product: { id: "p1", sku: "S1", name: "Phone", currentPrice: 900 } },
+      { mapPrice: 1000, product: { id: "p2", sku: "S2", name: "Cable", currentPrice: 1200 } },
+    ]);
+    const res = await request(app).get("/merchant/map-violations").set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body.configured).toBe(2);
+    expect(res.body.violations).toHaveLength(1);
+    expect(res.body.violations[0]).toMatchObject({ sku: "S1", status: "VIOLATION", deviationAmount: 100 });
+  });
+  it("forecasts stock-outs from recent sales", async () => {
+    db.product.findMany.mockResolvedValue([{ id: "p1", sku: "S1", name: "Phone", stockQuantity: 5, reorderPoint: 10, handlingTimeDays: 10 }]);
+    db.salesRecord.findMany.mockResolvedValue([{ productId: "p1", quantity: 30 }]);
+    const res = await request(app).get("/merchant/stock-forecast").set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body.urgent).toBe(1);
+    expect(res.body.forecasts[0]).toMatchObject({ sku: "S1", dailyVelocity: 1, willStockOutBeforeRestock: true });
+  });
+  it("reports the price position against fresh competitor prices", async () => {
+    db.competitorPrice.findMany.mockResolvedValue([{ price: 250 }, { price: 300 }]);
+    const res = await request(app).get("/merchant/products/p1/price-position").set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ standing: "CHEAPEST", cheapest: 250, sampleSize: 2 });
+  });
+  it("builds a chronological price history", async () => {
+    db.priceSuggestion.findMany.mockResolvedValue([{ suggestedPrice: 210, createdAt: new Date("2026-01-02") }]);
+    db.priceApproval.findMany.mockResolvedValue([{ proposedPrice: 220, createdAt: new Date("2026-01-03"), status: "APPLIED" }]);
+    db.competitorPrice.findMany.mockResolvedValue([{ price: 190, capturedAt: new Date("2026-01-01") }]);
+    const res = await request(app).get("/merchant/products/p1/price-history").set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body.points.map((p: { price: number }) => p.price)).toEqual([190, 210, 220]);
+    expect(res.body.summary).toMatchObject({ low: 190, high: 220, current: 220, points: 3 });
+  });
+  it("caps a promotion at the live cost floor", async () => {
+    const res = await request(app).get("/merchant/products/p1/promotion-plan").set(auth);
+    expect(res.status).toBe(200);
+    expect(res.body).toMatchObject({ currentPrice: 200, effectiveFloor: 125, maxSafePrice: 125, withinSafety: true });
+    expect(res.body.maxSafeDiscountPct).toBeCloseTo(0.375);
   });
   it("serves CSP-compatible external scripts without unsafe-inline", async () => {
     const res = await request(app).get("/dashboard.html");

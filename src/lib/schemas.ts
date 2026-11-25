@@ -43,6 +43,7 @@ export const pricingRuleSchema = z.object({
   targetMarginPct: rate01("targetMarginPct").optional().nullable(),
   floorPrice: z.number().positive().optional().nullable(),
   ceilingPrice: z.number().positive().optional().nullable(),
+  mapPrice: z.number().positive().optional().nullable(),
   strategy: z.enum(STRATEGIES).default("MATCH"),
   priceElasticity: z.number().optional().nullable(),
 });

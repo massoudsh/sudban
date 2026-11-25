@@ -15,3 +15,4 @@
 ## [2026-11-01] feature | ورود دمو opt-in با `DEMO_MODE=true`: فروشگاه OWNER نمونه و نشست ۸ ساعته؛ پیش‌فرض ۴۰۴
 ## [2026-11-16] update | Dockerize: Dockerfile سه‌مرحله‌ای، compose با Postgres+migrate+app، entrypoint با انتظار دیتابیس، baseline migration `20260101000000_init`؛ رفع تست شکسته دمو (۱۳۸ تست سبز)
 ## [2026-11-16] update | سیاست جدید ویکی: هر تغییر بدون استثنا باید در ویکی بازتاب یابد (حذف معافیت تغییرات trivial)؛ به‌روزرسانی `schema.md` (هر دو ویکی) و `AGENTS.md`؛ صفحات `api-routes` و `data-model` با وضعیت فعلی sync شدند و سه صفحه concept (auth، merchant-workflows، deployment) اضافه شد
+## [2026-11-25] feature | پنج بینش رقابتی بر اساس تحقیق بازار (Price2Spy، Sellerboard، Prisync، Torob، Helium 10): تخلف MAP، پیش‌بینی اتمام موجودی، جایگاه قیمت، تاریخچه قیمت و حداکثر تخفیف ایمن؛ `mapPrice` روی PricingRule با migration جدید، پنج route در `/merchant`، تب «بینش بازار» و پنل‌های محصول در UI؛ `merchantInsights.ts` با تست واحد و HTTP

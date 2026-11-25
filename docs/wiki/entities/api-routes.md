@@ -8,7 +8,7 @@
 |---|---|---|
 | `sellersRouter` | `/sellers` | ساخت فروشنده + صدور کلید API، `GET /me`، تنظیم کانال هشدار، team/subscription/usage |
 | `accountsRouter` | `/accounts` | ثبت‌نام/ورود/خروج حساب با نشست ۸ ساعته و `POST /demo` (فقط با `DEMO_MODE=true`) |
-| `merchantRouter` | `/merchant` | onboarding، محصولات و جزئیات، سود SKU/کانال، تأیید قیمت، هزینه جایگزینی، موجودی، پیش‌بررسی گروهی قیمت، گزارش VAT، فید کانال، WooCommerce |
+| `merchantRouter` | `/merchant` | onboarding، محصولات و جزئیات، سود SKU/کانال، تأیید قیمت، هزینه جایگزینی، موجودی، پیش‌بررسی گروهی قیمت، گزارش VAT، فید کانال، WooCommerce و بینش‌ها (`map-violations`، `stock-forecast`، `price-position`، `price-history`، `promotion-plan`) |
 | `importsRouter` | `/imports` | `POST /file` (CSV/XLSX خام) و `POST /catalog` (نگاشت + preview/commit) |
 | `productsRouter` | `/products` | CRUD محصول |
 | `costsRouter` | `/products/:id/costs` | ثبت/تاریخچه `CostProfile` |

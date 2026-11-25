@@ -151,6 +151,7 @@ model PricingRule {
   targetMarginPct Float? // حاشیه سود هدف (اختیاری)
   floorPrice      Float? // کف قیمت دستی (اگر تعیین شده، اولویت با سخت‌گیرانه‌تر است)
   ceilingPrice    Float? // سقف قیمت دستی
+  mapPrice        Float? // حداقل قیمت تبلیغ‌شده (MAP)؛ فروش زیر آن تخلف است
   strategy        PricingStrategy @default(MATCH)
   priceElasticity Float? // ضریب کشش قیمتی سفارشی (پیش‌فرض سیستمی اگر خالی باشد)
 

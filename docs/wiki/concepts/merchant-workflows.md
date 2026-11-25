@@ -11,6 +11,8 @@
 - **گزارش‌ها:** `GET /merchant/profit` (SKU/کانال)، `/channel-performance`، `/tax-report` (برآورد VAT با `estimateOnly:true`).
 - **کانال‌ها:** `GET /merchant/feeds/:channel` XML برای `torob|emalls|basalam|store`؛ افزونه دستی WooCommerce در `integrations/woocommerce/`.
 
+- **بینش بازار:** MAP، پیش‌بینی اتمام موجودی از فروش ۳۰ روز اخیر، جایگاه قیمت در باند رقبا، تاریخچه زمانی قیمت و بیشترین تخفیف ایمن. همه فقط خواندنی‌اند و قیمت را خودکار تغییر نمی‌دهند.
+
 ## وابستگی‌ها
 - [[concepts/auth]] — نشست، نقش عضو و کلید API
 - [[entities/api-routes]] — مسیرهای `/merchant`, `/accounts`, `/imports`
@@ -25,5 +27,6 @@
 
 ## منابع کد
 - `src/routes/accounts.ts`, `src/routes/merchant.ts`, `src/routes/imports.ts`
+- `src/services/merchantInsights.ts` — MAP، پیش‌بینی موجودی، جایگاه قیمت، تاریخچه و تخفیف
 - `src/services/merchantFinance.ts`, `src/services/catalogImport.ts`, `src/services/workbookGuard.ts`, `src/services/billingPlans.ts`
 - `public/dashboard.js`, `public/workflows.js`, `public/dashboard.css`

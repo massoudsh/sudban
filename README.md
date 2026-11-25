@@ -133,6 +133,11 @@ Authorization: Bearer sk_live_...
 | PATCH | `/merchant/products/:id/inventory` | به‌روزرسانی موجودی/نقطه سفارش/زمان آماده‌سازی |
 | POST | `/merchant/bulk-price-preview` | اعتبارسنجی گروهی تا ۵۰۰ قیمت بدون نوشتن |
 | GET | `/merchant/channel-performance` | سود و درآمد به تفکیک کانال |
+| GET | `/merchant/map-violations` | محصولاتی که زیر حداقل قیمت تبلیغ‌شده (MAP) فروخته می‌شوند |
+| GET | `/merchant/stock-forecast` | پیش‌بینی اتمام موجودی از سرعت فروش ۳۰ روز اخیر |
+| GET | `/merchant/products/:id/price-position` | جایگاه قیمت نسبت به باند رقبا |
+| GET | `/merchant/products/:id/price-history` | تاریخچه زمانی پیشنهاد، تأیید و قیمت رقبا |
+| GET | `/merchant/products/:id/promotion-plan` | بیشترین تخفیف ایمن تا کف سود (و سقف MAP) |
 | GET | `/merchant/tax-report` | برآورد مدیریتی VAT با `estimateOnly:true` |
 | GET | `/merchant/profit` | سود SKU/کانال برای حداکثر ۱۰۰۰۰ رکورد آخر؛ داده ناقص جدا گزارش می‌شود |
 | GET | `/merchant/approvals` | فهرست درخواست‌های قیمت |
@@ -147,6 +152,10 @@ Authorization: Bearer sk_live_...
 فروش: `unitCostSnapshot` هزینه واحد در زمان فروش است؛ `commissionAmount`، `shippingSubsidy`، `discountAmount`، `returnCost` و `settlementDeduction` مبالغ کل همان تراکنش‌اند و یک‌بار کم می‌شوند. بدون snapshot، سود نامعلوم می‌ماند؛ زیان واقعی حذف نمی‌شود. قیمت‌ها در دیتابیس ریال‌اند؛ ورودی تومان یک‌بار ×۱۰ می‌شود.
 
 رقبا: فقط قیمت ریالی موجود، با `matchConfidence >= 0.9` و ثبت‌شده طی ۲۴ ساعت گذشته وارد محاسبه می‌شود. قیمت پیشنهادی و برگشت قیمت داخل تراکنش با هزینه زنده و قیمت موردانتظار کنترل می‌شوند. **اعمال/برگشت فقط کاتالوگ محلی را تغییر می‌دهد، نه مارکت‌پلیس.** اعضای تیم کلید مستقل و قابل غیرفعال‌سازی دارند؛ هش‌ها در پاسخ پروفایل/تیم نیستند.
+
+### بینش بازار
+
+پنج گزارش تحلیلی افزوده شده‌اند: تخلف MAP (الگو: Price2Spy)، پیش‌بینی اتمام موجودی (Sellerboard)، جایگاه قیمت و تاریخچه قیمت (Prisync و ترب)، و برنامه تخفیف ایمن (Helium 10). این‌ها فقط خواندنی‌اند و هیچ‌کدام قیمت را خودکار تغییر نمی‌دهند؛ تغییر قیمت همچنان از مسیر تأیید محلی می‌گذرد. `mapPrice` در `PricingRule` هر محصول تعیین می‌شود و پس از افزودن، migration `20261125000000_map_price` باید اجرا شود.
 
 ### WooCommerce و خلاصه روزانه
 

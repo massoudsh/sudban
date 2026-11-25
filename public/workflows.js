@@ -74,6 +74,18 @@
     const sale = submitForm("ثبت فروش و هزینه واقعی", async data => { const body = { channel: data.channel, soldAt: new Date().toISOString() }; for (const key of ["price", "quantity", "unitCostSnapshot", "commissionAmount", "shippingSubsidy", "discountAmount", "returnCost", "settlementDeduction"]) body[key] = Number(data[key]); await api(`/products/${id}/sales`, body); panel.prepend(notice("فروش ثبت شد و در گزارش سود لحاظ می‌شود.")); });
     field(sale, "channel", "کانال", "text", "direct");
     for (const [name, label, value] of [["price", "قیمت واحد (ریال)", p.currentPrice || ""], ["quantity", "تعداد", 1], ["unitCostSnapshot", "بهای تمام‌شده هر واحد در زمان فروش (ریال)", ""], ["commissionAmount", "کل کمیسیون", 0], ["shippingSubsidy", "کل یارانه ارسال", 0], ["discountAmount", "کل تخفیف", 0], ["returnCost", "کل هزینه مرجوعی", 0], ["settlementDeduction", "کسری تسویه", 0]]) field(sale, name, label, "number", value);
+    panel.append(el("h3", "بینش قیمت"), button("جایگاه در بازار", async () => {
+      const position = await api(`/merchant/products/${id}/price-position`);
+      if (position.standing === "NO_DATA") return panel.prepend(notice("برای مقایسه، قیمت رقبای تازه ثبت کنید."));
+      panel.prepend(notice(`ارزان‌ترین رقیب ${formatNumber(position.cheapest)} ریال است؛ اختلاف شما ${formatNumber(position.gapToCheapest)} ریال و اختلاف با میانه ${formatPercent((position.gapToMedianPct || 0) * 100)} است.`));
+    }), button("حداکثر تخفیف ایمن", async () => {
+      const plan = await api(`/merchant/products/${id}/promotion-plan`);
+      panel.prepend(notice(`حداکثر تخفیف ایمن ${formatPercent(plan.maxSafeDiscountPct * 100)} (${formatNumber(plan.maxSafeDiscountAmount)} ریال) تا کف ${formatNumber(plan.effectiveFloor)} ریال.${plan.mapLimited ? " تخفیف بیشتر از این، حداقل قیمت تبلیغ‌شده را نقض می‌کند." : ""}`));
+    }), button("تاریخچه قیمت", async () => {
+      const history = await api(`/merchant/products/${id}/price-history`);
+      if (!history.points.length) return panel.prepend(notice("هنوز نقطه‌ای برای تاریخچه قیمت ثبت نشده است."));
+      panel.prepend(table(["زمان", "منبع", "قیمت (ریال)"], history.points.slice(-25).map(p => [new Date(p.at).toLocaleString("fa-IR"), p.source, formatNumber(p.price)])), notice(`کمترین ${formatNumber(history.summary.low)}، بیشترین ${formatNumber(history.summary.high)}، تغییر ${formatPercent((history.summary.changePct || 0) * 100)}.`));
+    }));
     panel.append(el("h3", "ثبت فروش"), notice("بهای تمام‌شده واحد باید شامل بسته‌بندی و سایر هزینه‌های ثابت باشد؛ کسورات دیگر برای کل این رکورد فروش هستند."), sale);
   }
   async function approvals() {
@@ -149,6 +161,18 @@
     const unit = el("select"); unit.name = "unit"; for (const [value, text] of [["IRR", "ریال"], ["IRT", "تومان"]]) { const option = el("option", text); option.value = value; unit.append(option); }
     const unitLabel = el("label", "واحد قیمت"); unitLabel.append(unit); form.append(unitLabel); panel.append(form);
   }
+  async function insights() {
+    title("بینش بازار و ریسک موجودی");
+    panel.append(notice("تخلف MAP بر اساس حداقل قیمت تبلیغ‌شده هر محصول، و پیش‌بینی اتمام موجودی بر اساس فروش ۳۰ روز اخیر محاسبه می‌شود."));
+    const map = await api("/merchant/map-violations");
+    if (map.violations.length) {
+      panel.append(el("h3", `تخلف MAP (${map.violations.length})`), table(["محصول", "SKU", "قیمت فعلی", "حداقل مجاز", "کسری"], map.violations.map(v => [v.name, v.sku, formatNumber(v.currentPrice), formatNumber(v.mapPrice), `${formatNumber(v.deviationAmount)} (${formatPercent((v.deviationPct || 0) * 100)})`])));
+    } else {
+      panel.append(el("h3", "تخلف MAP"), notice(map.configured ? "هیچ تخلفی وجود ندارد؛ همه محصولات بالای حداقل قیمت هستند." : "برای هیچ محصولی حداقل قیمت تبلیغ‌شده تعیین نشده است."));
+    }
+    const forecast = await api("/merchant/stock-forecast");
+    panel.append(el("h3", "پیش‌بینی موجودی"), notice(forecast.urgent ? `${forecast.urgent} محصول پیش از رسیدن سفارش جدید تمام می‌شود.` : "هیچ محصولی پیش از زمان تأمین تمام نمی‌شود."), table(["محصول", "SKU", "روز پوشش", "پیشنهاد سفارش", "اطمینان"], forecast.forecasts.filter(f => f.willStockOutBeforeRestock).map(f => [f.name, f.sku, f.daysOfCover == null ? "نامعلوم" : Math.floor(f.daysOfCover), f.suggestedReorderQuantity, f.confidence])));
+  }
   async function settings() {
     title("تیم، اعلان و اشتراک");
     panel.append(notice("عضو تیم با کلید اختصاصی و نقش مشخص وارد می‌شود. کلید در پایگاه داده به‌صورت هش نگهداری می‌شود و فقط هنگام صدور نمایش داده می‌شود."));
@@ -168,7 +192,7 @@
     });
     field(signal, "source", "نام منبع نرخ"); field(signal, "currency", "ارز مبنا (مثلاً USD)", "text", "USD"); field(signal, "rate", "هر واحد ارز چند ریال است؟", "number"); field(signal, "capturedAt", "تاریخ نرخ", "datetime-local"); panel.append(el("h3", "هزینه جایگزینی"), signal);
   }
-  const views = { products, approvals, reports, onboarding, imports, inventory, marketplace, settings };
+  const views = { products, approvals, reports, onboarding, imports, inventory, marketplace, insights, settings };
   document.querySelectorAll("[data-view]").forEach(control => control.addEventListener("click", () => {
     const view = control.dataset.view;
     document.querySelectorAll("[data-view]").forEach(b => b.classList.toggle("active", b === control));

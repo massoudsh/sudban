@@ -13,6 +13,8 @@
 - **گزارش‌ها:** `/merchant/profit`, `/channel-performance`, `/tax-report` (برآورد VAT با `estimateOnly:true`).
 - **کانال‌ها:** فید XML برای `torob|emalls|basalam|store`؛ افزونه دستی WooCommerce.
 
+- **بینش بازار:** MAP، پیش‌بینی اتمام موجودی، جایگاه قیمت، تاریخچه قیمت و تخفیف ایمن — همه خواندنی و بدون تغییر خودکار قیمت.
+
 ## قراردادها / Edge cases
 - apply/rollback فقط `scope:"LOCAL_CATALOG"` را تغییر می‌دهد؛ `marketplaceApplied:false`.
 - قیمت رقیب فقط اگر موجود، ریالی، `matchConfidence >= 0.9` و کمتر از ۲۴ ساعت عمر داشته باشد.
